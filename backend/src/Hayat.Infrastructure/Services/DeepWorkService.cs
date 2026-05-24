@@ -52,6 +52,32 @@ namespace Hayat.Infrastructure.Services
             return new DeepWorkSessionDto(session.Id, session.DeepWorkTypeId, typeName, session.Date, session.DurationMinutes, session.Description);
         }
 
+        public async Task<DeepWorkSessionDto?> UpdateSessionAsync(int userId, int id, UpdateDeepWorkRequest request)
+        {
+            if (request.DurationMinutes <= 0) return null;
+            var typeExists = await _db.DeepWorkTypes.AnyAsync(t => t.Id == request.DeepWorkTypeId && t.IsActive);
+            if (!typeExists) return null;
+
+            var session = await _db.DeepWorkSessions
+                .Include(s => s.DeepWorkType)
+                .FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+            if (session == null) return null;
+
+            session.DeepWorkTypeId = request.DeepWorkTypeId;
+            session.Date = request.Date;
+            session.DurationMinutes = request.DurationMinutes;
+            session.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+            await _db.SaveChangesAsync();
+
+            return new DeepWorkSessionDto(
+                session.Id,
+                session.DeepWorkTypeId,
+                session.DeepWorkType.Name,
+                session.Date,
+                session.DurationMinutes,
+                session.Description);
+        }
+
         public async Task<bool> DeleteSessionAsync(int userId, int id)
         {
             var item = await _db.DeepWorkSessions.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);

@@ -19,8 +19,13 @@
 - [x] Alışkanlıklar: check-in kartları + streak
 - [x] Yönetim: tip CRUD + haftalık hedefler + progress bar
 
+### Faz 2b — Geçmiş kayıtlar ✅
+- [x] Backend PUT: uyku, spor, meditasyon, deep work güncelleme
+- [x] Kayıt Ekle → Geçmiş sekmesi (listele, düzenle, sil)
+- [x] Tarih formatı: gün.ay.yıl (tr-TR) tüm listelerde
+- [x] Dashboard grafik ekseni: dd.MM / tooltip tam tarih
+
 ### Sonraki adımlar
-- [ ] Geçmiş kayıt listeleme ve düzenleme ekranları
 - [ ] Alışkanlık geçmiş gün check-in takvimi
 - [ ] Dashboard günlük filtre + aktivite tipi filtresi
 - [ ] Haftalık hedef progress bar'ları ilgili modül sayfalarında

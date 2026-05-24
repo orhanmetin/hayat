@@ -32,6 +32,15 @@ namespace Hayat.Api.Controllers
             return result == null ? BadRequest() : Ok(result);
         }
 
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateDeepWorkRequest request)
+        {
+            var userId = GetUserId();
+            if (userId == null) return UnauthorizedUser();
+            var result = await _service.UpdateSessionAsync(userId.Value, id, request);
+            return result == null ? BadRequest() : Ok(result);
+        }
+
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {

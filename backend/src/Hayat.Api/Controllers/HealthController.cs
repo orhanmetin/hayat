@@ -32,6 +32,15 @@ namespace Hayat.Api.Controllers
             return result == null ? BadRequest(new { message = "Geçersiz uyku kaydı." }) : Ok(result);
         }
 
+        [HttpPut("sleep/{id:int}")]
+        public async Task<IActionResult> UpdateSleep(int id, [FromBody] UpdateSleepLogRequest request)
+        {
+            var userId = GetUserId();
+            if (userId == null) return UnauthorizedUser();
+            var result = await _service.UpdateSleepLogAsync(userId.Value, id, request);
+            return result == null ? BadRequest(new { message = "Geçersiz uyku kaydı." }) : Ok(result);
+        }
+
         [HttpDelete("sleep/{id:int}")]
         public async Task<IActionResult> DeleteSleep(int id)
         {
@@ -57,6 +66,15 @@ namespace Hayat.Api.Controllers
             return result == null ? BadRequest() : Ok(result);
         }
 
+        [HttpPut("sport/{id:int}")]
+        public async Task<IActionResult> UpdateSport(int id, [FromBody] UpdateSportActivityRequest request)
+        {
+            var userId = GetUserId();
+            if (userId == null) return UnauthorizedUser();
+            var result = await _service.UpdateSportActivityAsync(userId.Value, id, request);
+            return result == null ? BadRequest() : Ok(result);
+        }
+
         [HttpDelete("sport/{id:int}")]
         public async Task<IActionResult> DeleteSport(int id)
         {
@@ -79,6 +97,15 @@ namespace Hayat.Api.Controllers
             var userId = GetUserId();
             if (userId == null) return UnauthorizedUser();
             var result = await _service.CreateMeditationAsync(userId.Value, request);
+            return result == null ? BadRequest() : Ok(result);
+        }
+
+        [HttpPut("meditation/{id:int}")]
+        public async Task<IActionResult> UpdateMeditation(int id, [FromBody] UpdateMeditationRequest request)
+        {
+            var userId = GetUserId();
+            if (userId == null) return UnauthorizedUser();
+            var result = await _service.UpdateMeditationAsync(userId.Value, id, request);
             return result == null ? BadRequest() : Ok(result);
         }
 

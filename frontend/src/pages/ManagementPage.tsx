@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Plus, Trash2, Settings2 } from "lucide-react";
 import { managementApi, weeklyGoalsApi } from "../services/modules";
 import { ProgressBar } from "../components/ui/ProgressBar";
+import { formatDate } from "../lib/format";
 import type { LookupType, WeeklyGoal } from "../types/modules";
 import { cn } from "../lib/utils";
 
@@ -11,7 +12,12 @@ export const ManagementPage: React.FC = () => {
   const [newSport, setNewSport] = useState("");
   const [newDeepWork, setNewDeepWork] = useState("");
   const [weeklyGoal, setWeeklyGoal] = useState<WeeklyGoal | null>(null);
-  const [weekInfo, setWeekInfo] = useState({ year: 0, weekNumber: 0 });
+  const [weekInfo, setWeekInfo] = useState({
+    year: 0,
+    weekNumber: 0,
+    weekStart: "",
+    weekEnd: "",
+  });
 
   const load = async () => {
     const [sport, deep, week] = await Promise.all([
@@ -21,7 +27,12 @@ export const ManagementPage: React.FC = () => {
     ]);
     setSportTypes(sport.data);
     setDeepWorkTypes(deep.data);
-    setWeekInfo({ year: week.data.year, weekNumber: week.data.weekNumber });
+    setWeekInfo({
+      year: week.data.year,
+      weekNumber: week.data.weekNumber,
+      weekStart: week.data.weekStart,
+      weekEnd: week.data.weekEnd,
+    });
     try {
       const goal = await weeklyGoalsApi.get(week.data.year, week.data.weekNumber);
       setWeeklyGoal(goal.data);
@@ -125,7 +136,10 @@ export const ManagementPage: React.FC = () => {
       <div>
         <h1 className="text-2xl font-bold">Yönetim</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Dinamik listeler ve haftalık hedefler (ISO hafta {weekInfo.weekNumber}, {weekInfo.year})
+          Dinamik listeler ve haftalık hedefler — Hafta {weekInfo.weekNumber} / {weekInfo.year}
+          {weekInfo.weekStart && (
+            <> ({formatDate(weekInfo.weekStart)} – {formatDate(weekInfo.weekEnd)})</>
+          )}
         </p>
       </div>
 

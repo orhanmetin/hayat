@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { dashboardApi } from "../services/modules";
-import { formatMinutes } from "../lib/format";
+import { formatChartDate, formatMinutes } from "../lib/format";
 import type { DashboardAnalytics, DashboardSummary } from "../types/modules";
 import { cn } from "../lib/utils";
 
@@ -144,9 +144,18 @@ export const DashboardPage: React.FC = () => {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chart.points}>
                       <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                      <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                      <XAxis
+                        dataKey="label"
+                        tick={{ fontSize: 10 }}
+                        tickFormatter={(v) => formatChartDate(String(v))}
+                      />
                       <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip />
+                      <Tooltip
+                        labelFormatter={(v) => {
+                          const s = String(v);
+                          return /^\d{2}\.\d{2}\.\d{4}$/.test(s) ? s : formatChartDate(s);
+                        }}
+                      />
                       <Bar dataKey="value" fill="#5f7a61" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>

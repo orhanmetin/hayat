@@ -8,9 +8,14 @@ import {
 } from "lucide-react";
 import { healthApi, deepWorkApi, managementApi } from "../services/modules";
 import { QuickDurationButtons } from "../components/ui/QuickDurationButtons";
-import { todayIso, toLocalDateTimeInput } from "../lib/format";
+import { TurkishDateInput } from "../components/ui/TurkishDateInput";
+import { TurkishDateTimeInput } from "../components/ui/TurkishDateTimeInput";
+import { RecordHistoryPanel } from "../components/history/RecordHistoryPanel";
+import { todayIso } from "../lib/format";
 import type { LookupType } from "../types/modules";
 import { cn } from "../lib/utils";
+
+type PageView = "add" | "history";
 
 type Tab = "sleep" | "sport" | "meditation" | "deepwork";
 
@@ -22,18 +27,19 @@ const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
 ];
 
 export const LogEntryPage: React.FC = () => {
+  const [pageView, setPageView] = useState<PageView>("add");
   const [tab, setTab] = useState<Tab>("sleep");
   const [sportTypes, setSportTypes] = useState<LookupType[]>([]);
   const [deepWorkTypes, setDeepWorkTypes] = useState<LookupType[]>([]);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [bedTime, setBedTime] = useState(() => {
+  const [bedDateTime, setBedDateTime] = useState(() => {
     const d = new Date();
     d.setHours(23, 0, 0, 0);
-    return toLocalDateTimeInput(d);
+    return d;
   });
-  const [wakeTime, setWakeTime] = useState(() => toLocalDateTimeInput(new Date()));
+  const [wakeDateTime, setWakeDateTime] = useState(() => new Date());
   const [quality, setQuality] = useState(4);
 
   const [sportTypeId, setSportTypeId] = useState<number>(0);
@@ -69,8 +75,8 @@ export const LogEntryPage: React.FC = () => {
     e.preventDefault();
     try {
       await healthApi.createSleep({
-        bedTime: new Date(bedTime).toISOString(),
-        wakeTime: new Date(wakeTime).toISOString(),
+        bedTime: bedDateTime.toISOString(),
+        wakeTime: wakeDateTime.toISOString(),
         quality,
       });
       showSuccess("Uyku kaydı eklendi.");
@@ -121,10 +127,37 @@ export const LogEntryPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold">Kayıt Ekle</h1>
-        <p className="text-sm text-slate-500 mt-1">Mobil dostu hızlı giriş formları</p>
+        <h1 className="text-2xl font-bold">Kayıtlar</h1>
+        <p className="text-sm text-slate-500 mt-1">Yeni kayıt ekle veya geçmişi düzenle</p>
       </div>
 
+      <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-100 dark:bg-white/5">
+        <button
+          type="button"
+          onClick={() => setPageView("add")}
+          className={cn(
+            "py-2.5 rounded-lg text-sm font-semibold transition-all",
+            pageView === "add" ? "bg-white dark:bg-black/40 shadow-sm text-primary" : "text-slate-500"
+          )}
+        >
+          Yeni Kayıt
+        </button>
+        <button
+          type="button"
+          onClick={() => setPageView("history")}
+          className={cn(
+            "py-2.5 rounded-lg text-sm font-semibold transition-all",
+            pageView === "history" ? "bg-white dark:bg-black/40 shadow-sm text-primary" : "text-slate-500"
+          )}
+        >
+          Geçmiş
+        </button>
+      </div>
+
+      {pageView === "history" ? (
+        <RecordHistoryPanel />
+      ) : (
+        <>
       {success && (
         <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 text-emerald-600 text-sm">
           <CheckCircle2 size={18} />
@@ -155,19 +188,15 @@ export const LogEntryPage: React.FC = () => {
       <div className="p-5 rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5">
         {tab === "sleep" && (
           <form onSubmit={submitSleep} className="space-y-4">
-            <label className="block text-sm font-medium">Yatış Zamanı</label>
-            <input
-              type="datetime-local"
-              value={bedTime}
-              onChange={(e) => setBedTime(e.target.value)}
-              className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent text-base"
+            <TurkishDateTimeInput
+              label="Yatış Zamanı"
+              value={bedDateTime}
+              onChange={setBedDateTime}
             />
-            <label className="block text-sm font-medium">Kalkış Zamanı</label>
-            <input
-              type="datetime-local"
-              value={wakeTime}
-              onChange={(e) => setWakeTime(e.target.value)}
-              className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent text-base"
+            <TurkishDateTimeInput
+              label="Kalkış Zamanı"
+              value={wakeDateTime}
+              onChange={setWakeDateTime}
             />
             <label className="block text-sm font-medium">Uyku Kalitesi (1-5)</label>
             <div className="flex gap-2">
@@ -205,13 +234,7 @@ export const LogEntryPage: React.FC = () => {
                 </option>
               ))}
             </select>
-            <label className="block text-sm font-medium">Tarih</label>
-            <input
-              type="date"
-              value={sportDate}
-              onChange={(e) => setSportDate(e.target.value)}
-              className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent text-base"
-            />
+            <TurkishDateInput label="Tarih" value={sportDate} onChange={setSportDate} />
             <label className="block text-sm font-medium">Süre</label>
             <QuickDurationButtons value={sportMinutes} onChange={setSportMinutes} />
             <button type="submit" className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover-scale">
@@ -222,13 +245,7 @@ export const LogEntryPage: React.FC = () => {
 
         {tab === "meditation" && (
           <form onSubmit={submitMeditation} className="space-y-4">
-            <label className="block text-sm font-medium">Tarih</label>
-            <input
-              type="date"
-              value={meditationDate}
-              onChange={(e) => setMeditationDate(e.target.value)}
-              className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent text-base"
-            />
+            <TurkishDateInput label="Tarih" value={meditationDate} onChange={setMeditationDate} />
             <label className="block text-sm font-medium">Süre</label>
             <QuickDurationButtons value={meditationMinutes} onChange={setMeditationMinutes} options={[5, 10, 15, 20, 30, 45]} />
             <button type="submit" className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover-scale">
@@ -251,13 +268,7 @@ export const LogEntryPage: React.FC = () => {
                 </option>
               ))}
             </select>
-            <label className="block text-sm font-medium">Tarih</label>
-            <input
-              type="date"
-              value={deepWorkDate}
-              onChange={(e) => setDeepWorkDate(e.target.value)}
-              className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent text-base"
-            />
+            <TurkishDateInput label="Tarih" value={deepWorkDate} onChange={setDeepWorkDate} />
             <label className="block text-sm font-medium">Süre</label>
             <QuickDurationButtons value={deepWorkMinutes} onChange={setDeepWorkMinutes} />
             <label className="block text-sm font-medium">Açıklama (opsiyonel)</label>
@@ -273,6 +284,8 @@ export const LogEntryPage: React.FC = () => {
           </form>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 };

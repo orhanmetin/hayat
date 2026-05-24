@@ -2,8 +2,12 @@ import { apiClient } from "./api";
 import type {
   DashboardAnalytics,
   DashboardSummary,
+  DeepWorkSession,
   Habit,
   LookupType,
+  MeditationSession,
+  SleepLog,
+  SportActivity,
   WeekInfo,
   WeeklyGoal,
 } from "../types/modules";
@@ -36,29 +40,71 @@ export const managementApi = {
 };
 
 export const healthApi = {
+  getSleep: (from?: string, to?: string) =>
+    apiClient.get<SleepLog[]>("/health/sleep", {
+      params: { from, to },
+    }),
   createSleep: (data: {
     bedTime: string;
     wakeTime: string;
     quality: number;
     note?: string;
   }) => apiClient.post("/health/sleep", data),
+  updateSleep: (id: number, data: {
+    bedTime: string;
+    wakeTime: string;
+    quality: number;
+    note?: string;
+  }) => apiClient.put(`/health/sleep/${id}`, data),
+  deleteSleep: (id: number) => apiClient.delete(`/health/sleep/${id}`),
+
+  getSport: (from?: string, to?: string, typeId?: number) =>
+    apiClient.get<SportActivity[]>("/health/sport", {
+      params: { from, to, typeId },
+    }),
   createSport: (data: {
     sportActivityTypeId: number;
     date: string;
     durationMinutes: number;
     note?: string;
   }) => apiClient.post("/health/sport", data),
+  updateSport: (id: number, data: {
+    sportActivityTypeId: number;
+    date: string;
+    durationMinutes: number;
+    note?: string;
+  }) => apiClient.put(`/health/sport/${id}`, data),
+  deleteSport: (id: number) => apiClient.delete(`/health/sport/${id}`),
+
+  getMeditation: (from?: string, to?: string) =>
+    apiClient.get<MeditationSession[]>("/health/meditation", {
+      params: { from, to },
+    }),
   createMeditation: (data: { date: string; durationMinutes: number }) =>
     apiClient.post("/health/meditation", data),
+  updateMeditation: (id: number, data: { date: string; durationMinutes: number }) =>
+    apiClient.put(`/health/meditation/${id}`, data),
+  deleteMeditation: (id: number) => apiClient.delete(`/health/meditation/${id}`),
 };
 
 export const deepWorkApi = {
+  getAll: (from?: string, to?: string, typeId?: number) =>
+    apiClient.get<DeepWorkSession[]>("/deepwork", {
+      params: { from, to, typeId },
+    }),
   create: (data: {
     deepWorkTypeId: number;
     date: string;
     durationMinutes: number;
     description?: string;
   }) => apiClient.post("/deepwork", data),
+  update: (id: number, data: {
+    deepWorkTypeId: number;
+    date: string;
+    durationMinutes: number;
+    description?: string;
+  }) => apiClient.put(`/deepwork/${id}`, data),
+  delete: (id: number) => apiClient.delete(`/deepwork/${id}`),
 };
 
 export const weeklyGoalsApi = {

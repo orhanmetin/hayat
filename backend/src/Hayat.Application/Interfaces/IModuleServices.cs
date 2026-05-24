@@ -30,12 +30,15 @@ namespace Hayat.Application.Interfaces
     {
         Task<IReadOnlyList<SleepLogDto>> GetSleepLogsAsync(int userId, DateOnly? from, DateOnly? to);
         Task<SleepLogDto?> CreateSleepLogAsync(int userId, CreateSleepLogRequest request);
+        Task<SleepLogDto?> UpdateSleepLogAsync(int userId, int id, UpdateSleepLogRequest request);
         Task<bool> DeleteSleepLogAsync(int userId, int id);
         Task<IReadOnlyList<SportActivityDto>> GetSportActivitiesAsync(int userId, DateOnly? from, DateOnly? to, int? typeId);
         Task<SportActivityDto?> CreateSportActivityAsync(int userId, CreateSportActivityRequest request);
+        Task<SportActivityDto?> UpdateSportActivityAsync(int userId, int id, UpdateSportActivityRequest request);
         Task<bool> DeleteSportActivityAsync(int userId, int id);
         Task<IReadOnlyList<MeditationSessionDto>> GetMeditationsAsync(int userId, DateOnly? from, DateOnly? to);
         Task<MeditationSessionDto?> CreateMeditationAsync(int userId, CreateMeditationRequest request);
+        Task<MeditationSessionDto?> UpdateMeditationAsync(int userId, int id, UpdateMeditationRequest request);
         Task<bool> DeleteMeditationAsync(int userId, int id);
     }
 
@@ -43,6 +46,7 @@ namespace Hayat.Application.Interfaces
     {
         Task<IReadOnlyList<DeepWorkSessionDto>> GetSessionsAsync(int userId, DateOnly? from, DateOnly? to, int? typeId);
         Task<DeepWorkSessionDto?> CreateSessionAsync(int userId, CreateDeepWorkRequest request);
+        Task<DeepWorkSessionDto?> UpdateSessionAsync(int userId, int id, UpdateDeepWorkRequest request);
         Task<bool> DeleteSessionAsync(int userId, int id);
     }
 

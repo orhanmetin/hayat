@@ -36,6 +36,12 @@ namespace Hayat.Application.DTOs
         int Quality,
         string? Note
     );
+    public record UpdateSleepLogRequest(
+        DateTime BedTime,
+        DateTime WakeTime,
+        int Quality,
+        string? Note
+    );
 
     // --- Sport ---
     public record SportActivityDto(
@@ -52,10 +58,17 @@ namespace Hayat.Application.DTOs
         int DurationMinutes,
         string? Note
     );
+    public record UpdateSportActivityRequest(
+        int SportActivityTypeId,
+        DateOnly Date,
+        int DurationMinutes,
+        string? Note
+    );
 
     // --- Meditation ---
     public record MeditationSessionDto(int Id, DateOnly Date, int DurationMinutes);
     public record CreateMeditationRequest(DateOnly Date, int DurationMinutes);
+    public record UpdateMeditationRequest(DateOnly Date, int DurationMinutes);
 
     // --- Deep Work ---
     public record DeepWorkSessionDto(
@@ -67,6 +80,12 @@ namespace Hayat.Application.DTOs
         string? Description
     );
     public record CreateDeepWorkRequest(
+        int DeepWorkTypeId,
+        DateOnly Date,
+        int DurationMinutes,
+        string? Description
+    );
+    public record UpdateDeepWorkRequest(
         int DeepWorkTypeId,
         DateOnly Date,
         int DurationMinutes,

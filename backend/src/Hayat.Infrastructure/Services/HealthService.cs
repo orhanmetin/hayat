@@ -46,6 +46,22 @@ namespace Hayat.Infrastructure.Services
             return MapSleep(log);
         }
 
+        public async Task<SleepLogDto?> UpdateSleepLogAsync(int userId, int id, UpdateSleepLogRequest request)
+        {
+            if (request.WakeTime <= request.BedTime) return null;
+            if (request.Quality < 1 || request.Quality > 5) return null;
+
+            var log = await _db.SleepLogs.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+            if (log == null) return null;
+
+            log.BedTime = request.BedTime;
+            log.WakeTime = request.WakeTime;
+            log.Quality = request.Quality;
+            log.Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+            await _db.SaveChangesAsync();
+            return MapSleep(log);
+        }
+
         public async Task<bool> DeleteSleepLogAsync(int userId, int id)
         {
             var log = await _db.SleepLogs.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
@@ -91,6 +107,32 @@ namespace Hayat.Infrastructure.Services
             return new SportActivityDto(activity.Id, activity.SportActivityTypeId, typeName, activity.Date, activity.DurationMinutes, activity.Note);
         }
 
+        public async Task<SportActivityDto?> UpdateSportActivityAsync(int userId, int id, UpdateSportActivityRequest request)
+        {
+            if (request.DurationMinutes <= 0) return null;
+            var typeExists = await _db.SportActivityTypes.AnyAsync(t => t.Id == request.SportActivityTypeId && t.IsActive);
+            if (!typeExists) return null;
+
+            var activity = await _db.SportActivities
+                .Include(a => a.SportActivityType)
+                .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
+            if (activity == null) return null;
+
+            activity.SportActivityTypeId = request.SportActivityTypeId;
+            activity.Date = request.Date;
+            activity.DurationMinutes = request.DurationMinutes;
+            activity.Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+            await _db.SaveChangesAsync();
+
+            return new SportActivityDto(
+                activity.Id,
+                activity.SportActivityTypeId,
+                activity.SportActivityType.Name,
+                activity.Date,
+                activity.DurationMinutes,
+                activity.Note);
+        }
+
         public async Task<bool> DeleteSportActivityAsync(int userId, int id)
         {
             var item = await _db.SportActivities.FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
@@ -116,6 +158,18 @@ namespace Hayat.Infrastructure.Services
             if (request.DurationMinutes <= 0) return null;
             var session = new MeditationSession { UserId = userId, Date = request.Date, DurationMinutes = request.DurationMinutes };
             _db.MeditationSessions.Add(session);
+            await _db.SaveChangesAsync();
+            return new MeditationSessionDto(session.Id, session.Date, session.DurationMinutes);
+        }
+
+        public async Task<MeditationSessionDto?> UpdateMeditationAsync(int userId, int id, UpdateMeditationRequest request)
+        {
+            if (request.DurationMinutes <= 0) return null;
+            var session = await _db.MeditationSessions.FirstOrDefaultAsync(m => m.Id == id && m.UserId == userId);
+            if (session == null) return null;
+
+            session.Date = request.Date;
+            session.DurationMinutes = request.DurationMinutes;
             await _db.SaveChangesAsync();
             return new MeditationSessionDto(session.Id, session.Date, session.DurationMinutes);
         }

@@ -65,3 +65,39 @@ export interface WeekInfo {
   weekStart: string;
   weekEnd: string;
 }
+
+export interface SleepLog {
+  id: number;
+  bedTime: string;
+  wakeTime: string;
+  durationMinutes: number;
+  quality: number;
+  note?: string;
+  wakeDate: string;
+}
+
+export interface SportActivity {
+  id: number;
+  sportActivityTypeId: number;
+  activityTypeName: string;
+  date: string;
+  durationMinutes: number;
+  note?: string;
+}
+
+export interface MeditationSession {
+  id: number;
+  date: string;
+  durationMinutes: number;
+}
+
+export interface DeepWorkSession {
+  id: number;
+  deepWorkTypeId: number;
+  typeName: string;
+  date: string;
+  durationMinutes: number;
+  description?: string;
+}
+
+export type RecordKind = "sleep" | "sport" | "meditation" | "deepwork";

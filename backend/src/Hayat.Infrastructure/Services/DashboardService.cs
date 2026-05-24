@@ -120,7 +120,7 @@ namespace Hayat.Infrastructure.Services
         private static DashboardChartDto BuildChart(string title, List<DateOnly> labels, Func<DateOnly, double> getValue)
         {
             var points = labels.Select(d => new ChartDataPointDto(
-                d.ToString("dd MMM"),
+                $"{d.Day:D2}.{d.Month:D2}.{d.Year}",
                 getValue(d)
             )).ToList();
 
