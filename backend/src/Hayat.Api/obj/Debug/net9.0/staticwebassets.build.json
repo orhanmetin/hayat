@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "d4bkZ2BQGgDUgXx1kJvJ5E7Sz4Bi/prrNXGyl4FHxXE=",
+  "Source": "Hayat.Api",
+  "BasePath": "_content/Hayat.Api",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

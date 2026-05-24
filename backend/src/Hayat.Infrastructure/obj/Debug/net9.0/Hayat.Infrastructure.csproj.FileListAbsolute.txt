@@ -1,0 +1,17 @@
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\obj\Debug\net9.0\Hayat.Infrastructure.csproj.AssemblyReference.cache
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\obj\Debug\net9.0\Hayat.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\obj\Debug\net9.0\Hayat.Infrastructure.AssemblyInfoInputs.cache
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\obj\Debug\net9.0\Hayat.Infrastructure.AssemblyInfo.cs
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\obj\Debug\net9.0\Hayat.Infrastructure.csproj.CoreCompileInputs.cache
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\bin\Debug\net9.0\Hayat.Infrastructure.deps.json
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\bin\Debug\net9.0\Hayat.Infrastructure.dll
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\bin\Debug\net9.0\Hayat.Infrastructure.pdb
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\bin\Debug\net9.0\Hayat.Application.dll
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\bin\Debug\net9.0\Hayat.Domain.dll
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\bin\Debug\net9.0\Hayat.Application.pdb
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\bin\Debug\net9.0\Hayat.Domain.pdb
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\obj\Debug\net9.0\Hayat.In.5549EA68.Up2Date
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\obj\Debug\net9.0\Hayat.Infrastructure.dll
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\obj\Debug\net9.0\refint\Hayat.Infrastructure.dll
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\obj\Debug\net9.0\Hayat.Infrastructure.pdb
+C:\Users\TEMP\Documents\antigravity\hayat\backend\src\Hayat.Infrastructure\obj\Debug\net9.0\ref\Hayat.Infrastructure.dll
