@@ -3,6 +3,7 @@ import { Pencil, Trash2, MoonStar, Activity, Flower2, Brain } from "lucide-react
 import { healthApi, deepWorkApi } from "../../services/modules";
 import { EditRecordModal } from "./EditRecordModal";
 import { formatDate, formatDateTime, formatMinutes, daysAgoIso } from "../../lib/format";
+import { formatDistanceKm } from "../../lib/sport";
 import type {
   DeepWorkSession,
   MeditationSession,
@@ -21,6 +22,7 @@ interface HistoryItem {
   title: string;
   subtitle: string;
   meta: string;
+  stravaLink?: string | null;
   raw: SleepLog | SportActivity | MeditationSession | DeepWorkSession;
 }
 
@@ -45,21 +47,31 @@ export const RecordHistoryPanel: React.FC = () => {
         ...sleep.data.map((r) => ({
           id: r.id,
           kind: "sleep" as const,
-          sortKey: r.wakeTime,
-          title: "Uyku",
-          subtitle: `${formatDateTime(r.bedTime)} → ${formatDateTime(r.wakeTime)}`,
-          meta: `${formatMinutes(r.durationMinutes)} · Kalite ${r.quality}/5`,
+          sortKey: r.wakeTime ?? r.bedTime,
+          title: r.isComplete ? "Uyku" : "Uyku (bekliyor)",
+          subtitle: r.isComplete
+            ? `${formatDateTime(r.bedTime)} → ${formatDateTime(r.wakeTime!)}`
+            : `Yatış: ${formatDateTime(r.bedTime)} · Kalkış bekleniyor`,
+          meta: r.isComplete
+            ? `${formatMinutes(r.durationMinutes)} · Kalite ${r.quality}/5`
+            : "Tamamlamak için düzenleyin",
           raw: r,
         })),
-        ...sport.data.map((r) => ({
-          id: r.id,
-          kind: "sport" as const,
-          sortKey: r.date,
-          title: r.activityTypeName,
-          subtitle: formatDate(r.date),
-          meta: formatMinutes(r.durationMinutes),
-          raw: r,
-        })),
+        ...sport.data.map((r) => {
+          const distance = formatDistanceKm(r.distanceKm);
+          const metaParts = [formatMinutes(r.durationMinutes)];
+          if (distance) metaParts.push(distance);
+          return {
+            id: r.id,
+            kind: "sport" as const,
+            sortKey: r.date,
+            title: r.activityTypeName,
+            subtitle: formatDate(r.date),
+            meta: metaParts.join(" · "),
+            stravaLink: r.stravaLink,
+            raw: r,
+          };
+        }),
         ...meditation.data.map((r) => ({
           id: r.id,
           kind: "meditation" as const,
@@ -167,6 +179,17 @@ export const RecordHistoryPanel: React.FC = () => {
                     <p className="font-semibold truncate">{item.title}</p>
                     <p className="text-sm text-slate-600 dark:text-slate-300">{item.subtitle}</p>
                     <p className="text-xs text-slate-400 mt-0.5">{item.meta}</p>
+                    {item.stravaLink && (
+                      <a
+                        href={item.stravaLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block text-xs text-orange-600 dark:text-orange-400 font-medium mt-1 hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Strava&apos;da aç →
+                      </a>
+                    )}
                   </div>
                   <div className="flex flex-col gap-1 shrink-0">
                     <button

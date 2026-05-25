@@ -23,13 +23,35 @@ namespace Hayat.Api.Controllers
             return Ok(await _service.GetSleepLogsAsync(userId.Value, from, to));
         }
 
+        [HttpGet("sleep/open")]
+        public async Task<IActionResult> GetOpenSleep()
+        {
+            var userId = GetUserId();
+            if (userId == null) return UnauthorizedUser();
+            var open = await _service.GetOpenSleepLogAsync(userId.Value);
+            return open == null ? NotFound() : Ok(open);
+        }
+
         [HttpPost("sleep")]
         public async Task<IActionResult> CreateSleep([FromBody] CreateSleepLogRequest request)
         {
             var userId = GetUserId();
             if (userId == null) return UnauthorizedUser();
             var result = await _service.CreateSleepLogAsync(userId.Value, request);
-            return result == null ? BadRequest(new { message = "Geçersiz uyku kaydı." }) : Ok(result);
+            if (result == null)
+            {
+                return BadRequest(new { message = "Geçersiz kayıt veya tamamlanmamış bir uyku kaydı zaten var." });
+            }
+            return Ok(result);
+        }
+
+        [HttpPost("sleep/{id:int}/complete")]
+        public async Task<IActionResult> CompleteSleep(int id, [FromBody] CompleteSleepLogRequest request)
+        {
+            var userId = GetUserId();
+            if (userId == null) return UnauthorizedUser();
+            var result = await _service.CompleteSleepLogAsync(userId.Value, id, request);
+            return result == null ? BadRequest(new { message = "Kalkış kaydedilemedi." }) : Ok(result);
         }
 
         [HttpPut("sleep/{id:int}")]

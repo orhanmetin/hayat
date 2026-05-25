@@ -66,7 +66,9 @@ namespace Hayat.Infrastructure.Services
             var (start, end) = WeekHelper.GetWeekRange(year, weekNumber);
 
             var sleepLogs = await _db.SleepLogs.AsNoTracking()
-                .Where(s => s.UserId == userId && DateOnly.FromDateTime(s.WakeTime) >= start && DateOnly.FromDateTime(s.WakeTime) <= end)
+                .Where(s => s.UserId == userId && s.WakeTime != null
+                    && DateOnly.FromDateTime(s.WakeTime!.Value) >= start
+                    && DateOnly.FromDateTime(s.WakeTime!.Value) <= end)
                 .ToListAsync();
 
             var sportTotal = await _db.SportActivities.AsNoTracking()

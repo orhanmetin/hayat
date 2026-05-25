@@ -24,22 +24,28 @@ namespace Hayat.Application.DTOs
     public record SleepLogDto(
         int Id,
         DateTime BedTime,
-        DateTime WakeTime,
+        DateTime? WakeTime,
         int DurationMinutes,
         int Quality,
         string? Note,
-        DateOnly WakeDate
+        DateOnly ListDate,
+        bool IsComplete
     );
     public record CreateSleepLogRequest(
         DateTime BedTime,
+        DateTime? WakeTime,
+        int? Quality,
+        string? Note
+    );
+    public record CompleteSleepLogRequest(
         DateTime WakeTime,
         int Quality,
         string? Note
     );
     public record UpdateSleepLogRequest(
         DateTime BedTime,
-        DateTime WakeTime,
-        int Quality,
+        DateTime? WakeTime,
+        int? Quality,
         string? Note
     );
 
@@ -50,18 +56,24 @@ namespace Hayat.Application.DTOs
         string ActivityTypeName,
         DateOnly Date,
         int DurationMinutes,
+        decimal? DistanceKm,
+        string? StravaLink,
         string? Note
     );
     public record CreateSportActivityRequest(
         int SportActivityTypeId,
         DateOnly Date,
         int DurationMinutes,
+        decimal? DistanceKm,
+        string? StravaLink,
         string? Note
     );
     public record UpdateSportActivityRequest(
         int SportActivityTypeId,
         DateOnly Date,
         int DurationMinutes,
+        decimal? DistanceKm,
+        string? StravaLink,
         string? Note
     );
 

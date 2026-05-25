@@ -44,16 +44,30 @@ export const healthApi = {
     apiClient.get<SleepLog[]>("/health/sleep", {
       params: { from, to },
     }),
+  getOpenSleep: async (): Promise<{ data: SleepLog | null }> => {
+    try {
+      const res = await apiClient.get<SleepLog>("/health/sleep/open");
+      return { data: res.data };
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) return { data: null };
+      throw err;
+    }
+  },
   createSleep: (data: {
     bedTime: string;
-    wakeTime: string;
-    quality: number;
+    wakeTime?: string | null;
+    quality?: number | null;
     note?: string;
   }) => apiClient.post("/health/sleep", data),
+  completeSleep: (
+    id: number,
+    data: { wakeTime: string; quality: number; note?: string }
+  ) => apiClient.post(`/health/sleep/${id}/complete`, data),
   updateSleep: (id: number, data: {
     bedTime: string;
-    wakeTime: string;
-    quality: number;
+    wakeTime?: string | null;
+    quality?: number | null;
     note?: string;
   }) => apiClient.put(`/health/sleep/${id}`, data),
   deleteSleep: (id: number) => apiClient.delete(`/health/sleep/${id}`),
@@ -66,12 +80,16 @@ export const healthApi = {
     sportActivityTypeId: number;
     date: string;
     durationMinutes: number;
+    distanceKm?: number | null;
+    stravaLink?: string | null;
     note?: string;
   }) => apiClient.post("/health/sport", data),
   updateSport: (id: number, data: {
     sportActivityTypeId: number;
     date: string;
     durationMinutes: number;
+    distanceKm?: number | null;
+    stravaLink?: string | null;
     note?: string;
   }) => apiClient.put(`/health/sport/${id}`, data),
   deleteSport: (id: number) => apiClient.delete(`/health/sport/${id}`),

@@ -76,12 +76,23 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     try
     {
+        if (args.Contains("--seed-dashboard-test"))
+            Environment.SetEnvironmentVariable("HAYAT_SEED_DASHBOARD_TEST", "1");
+
         SeedData.Initialize(services);
+
+        if (args.Contains("--seed-dashboard-test"))
+        {
+            Console.WriteLine("Dashboard test verisi olusturuldu (son 90 gun).");
+            return;
+        }
     }
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "Database migration/seeding sirasinda bir hata olustu.");
+        if (args.Contains("--seed-dashboard-test"))
+            throw;
     }
 }
 

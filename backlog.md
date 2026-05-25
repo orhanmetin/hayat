@@ -1,0 +1,1 @@
+1. Uyku kayıt edilirken kalkış zamanı giriş checkbox bastığımda, şayet daha önce kalkış tarih saati girilmemişse, kalkış tarih ve zamanı varsayılan olarak giriş tarih saatine 7 saat eklenmesi ile çıkan tarih saat olsun.

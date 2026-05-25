@@ -70,6 +70,8 @@ namespace Hayat.Infrastructure.Data
             modelBuilder.Entity<SportActivity>(e =>
             {
                 e.HasKey(x => x.Id);
+                e.Property(x => x.DistanceKm).HasColumnType("REAL");
+                e.Property(x => x.StravaLink).HasMaxLength(500);
                 e.Property(x => x.Note).HasMaxLength(500);
                 e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
                 e.HasOne(x => x.SportActivityType).WithMany().HasForeignKey(x => x.SportActivityTypeId).OnDelete(DeleteBehavior.Restrict);

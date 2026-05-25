@@ -35,8 +35,8 @@
               "C:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Application\\Hayat.Application.csproj": {
                 "projectPath": "C:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Application\\Hayat.Application.csproj"
               },
-              "c:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Infrastructure\\Hayat.Infrastructure.csproj": {
-                "projectPath": "c:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Infrastructure\\Hayat.Infrastructure.csproj"
+              "C:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Infrastructure\\Hayat.Infrastructure.csproj": {
+                "projectPath": "C:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Infrastructure\\Hayat.Infrastructure.csproj"
               }
             }
           }
@@ -229,14 +229,14 @@
         }
       }
     },
-    "c:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Infrastructure\\Hayat.Infrastructure.csproj": {
+    "C:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Infrastructure\\Hayat.Infrastructure.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Infrastructure\\Hayat.Infrastructure.csproj",
+        "projectUniqueName": "C:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Infrastructure\\Hayat.Infrastructure.csproj",
         "projectName": "Hayat.Infrastructure",
-        "projectPath": "c:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Infrastructure\\Hayat.Infrastructure.csproj",
+        "projectPath": "C:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Infrastructure\\Hayat.Infrastructure.csproj",
         "packagesPath": "C:\\Users\\TEMP\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Infrastructure\\obj\\",
+        "outputPath": "C:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Infrastructure\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

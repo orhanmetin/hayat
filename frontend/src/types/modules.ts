@@ -69,11 +69,12 @@ export interface WeekInfo {
 export interface SleepLog {
   id: number;
   bedTime: string;
-  wakeTime: string;
+  wakeTime: string | null;
   durationMinutes: number;
   quality: number;
   note?: string;
-  wakeDate: string;
+  listDate: string;
+  isComplete: boolean;
 }
 
 export interface SportActivity {
@@ -82,6 +83,8 @@ export interface SportActivity {
   activityTypeName: string;
   date: string;
   durationMinutes: number;
+  distanceKm?: number | null;
+  stravaLink?: string | null;
   note?: string;
 }
 

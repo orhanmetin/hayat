@@ -176,7 +176,7 @@ namespace Hayat.Infrastructure.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime>("WakeTime")
+                    b.Property<DateTime?>("WakeTime")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
@@ -201,7 +201,14 @@ namespace Hayat.Infrastructure.Migrations
                     b.Property<int>("DurationMinutes")
                         .HasColumnType("INTEGER");
 
+                    b.Property<decimal?>("DistanceKm")
+                        .HasColumnType("REAL");
+
                     b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("StravaLink")
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 

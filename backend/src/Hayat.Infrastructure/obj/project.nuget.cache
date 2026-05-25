@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "JKr8892QsdE=",
+  "dgSpecHash": "xD3tRneZuA8=",
   "success": true,
-  "projectFilePath": "c:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Infrastructure\\Hayat.Infrastructure.csproj",
+  "projectFilePath": "C:\\Users\\TEMP\\Documents\\antigravity\\hayat\\backend\\src\\Hayat.Infrastructure\\Hayat.Infrastructure.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\TEMP\\.nuget\\packages\\bcrypt.net-next\\4.2.0\\bcrypt.net-next.4.2.0.nupkg.sha512",
     "C:\\Users\\TEMP\\.nuget\\packages\\microsoft.data.sqlite.core\\9.0.16\\microsoft.data.sqlite.core.9.0.16.nupkg.sha512",

@@ -7,10 +7,11 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { healthApi, deepWorkApi, managementApi } from "../services/modules";
-import { QuickDurationButtons } from "../components/ui/QuickDurationButtons";
+import { DurationMinutesInput } from "../components/ui/DurationMinutesInput";
+import { parseDistanceKm, normalizeStravaUrl } from "../lib/sport";
 import { TurkishDateInput } from "../components/ui/TurkishDateInput";
-import { TurkishDateTimeInput } from "../components/ui/TurkishDateTimeInput";
 import { RecordHistoryPanel } from "../components/history/RecordHistoryPanel";
+import { SleepEntryForm } from "../components/sleep/SleepEntryForm";
 import { todayIso } from "../lib/format";
 import type { LookupType } from "../types/modules";
 import { cn } from "../lib/utils";
@@ -34,17 +35,12 @@ export const LogEntryPage: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [bedDateTime, setBedDateTime] = useState(() => {
-    const d = new Date();
-    d.setHours(23, 0, 0, 0);
-    return d;
-  });
-  const [wakeDateTime, setWakeDateTime] = useState(() => new Date());
-  const [quality, setQuality] = useState(4);
-
   const [sportTypeId, setSportTypeId] = useState<number>(0);
   const [sportDate, setSportDate] = useState(todayIso());
   const [sportMinutes, setSportMinutes] = useState(30);
+  const [sportDistance, setSportDistance] = useState("");
+  const [sportStravaLink, setSportStravaLink] = useState("");
+  const [sportNote, setSportNote] = useState("");
 
   const [meditationDate, setMeditationDate] = useState(todayIso());
   const [meditationMinutes, setMeditationMinutes] = useState(15);
@@ -71,28 +67,29 @@ export const LogEntryPage: React.FC = () => {
     setTimeout(() => setSuccess(null), 3000);
   };
 
-  const submitSleep = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await healthApi.createSleep({
-        bedTime: bedDateTime.toISOString(),
-        wakeTime: wakeDateTime.toISOString(),
-        quality,
-      });
-      showSuccess("Uyku kaydı eklendi.");
-    } catch {
-      setError("Uyku kaydı eklenemedi.");
-    }
-  };
-
   const submitSport = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (sportMinutes <= 0) {
+      setError("Geçerli bir süre girin (dakika).");
+      return;
+    }
+    const distanceKm = parseDistanceKm(sportDistance);
+    if (sportDistance.trim() && distanceKm === null) {
+      setError("Mesafe geçersiz. Örn: 13.5 (en fazla bir ondalık).");
+      return;
+    }
     try {
       await healthApi.createSport({
         sportActivityTypeId: sportTypeId,
         date: sportDate,
         durationMinutes: sportMinutes,
+        distanceKm: distanceKm ?? undefined,
+        stravaLink: normalizeStravaUrl(sportStravaLink) ?? undefined,
+        note: sportNote.trim() || undefined,
       });
+      setSportDistance("");
+      setSportStravaLink("");
+      setSportNote("");
       showSuccess("Spor kaydı eklendi.");
     } catch {
       setError("Spor kaydı eklenemedi.");
@@ -101,6 +98,10 @@ export const LogEntryPage: React.FC = () => {
 
   const submitMeditation = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (meditationMinutes <= 0) {
+      setError("Geçerli bir süre girin (dakika).");
+      return;
+    }
     try {
       await healthApi.createMeditation({ date: meditationDate, durationMinutes: meditationMinutes });
       showSuccess("Meditasyon kaydı eklendi.");
@@ -111,6 +112,10 @@ export const LogEntryPage: React.FC = () => {
 
   const submitDeepWork = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (deepWorkMinutes <= 0) {
+      setError("Geçerli bir süre girin (dakika).");
+      return;
+    }
     try {
       await deepWorkApi.create({
         deepWorkTypeId: deepWorkTypeId,
@@ -187,37 +192,7 @@ export const LogEntryPage: React.FC = () => {
 
       <div className="p-5 rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5">
         {tab === "sleep" && (
-          <form onSubmit={submitSleep} className="space-y-4">
-            <TurkishDateTimeInput
-              label="Yatış Zamanı"
-              value={bedDateTime}
-              onChange={setBedDateTime}
-            />
-            <TurkishDateTimeInput
-              label="Kalkış Zamanı"
-              value={wakeDateTime}
-              onChange={setWakeDateTime}
-            />
-            <label className="block text-sm font-medium">Uyku Kalitesi (1-5)</label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((q) => (
-                <button
-                  key={q}
-                  type="button"
-                  onClick={() => setQuality(q)}
-                  className={cn(
-                    "flex-1 py-3 rounded-xl font-bold border",
-                    quality === q ? "bg-primary text-white border-primary" : "border-slate-200 dark:border-white/10"
-                  )}
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-            <button type="submit" className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover-scale">
-              Kaydet
-            </button>
-          </form>
+          <SleepEntryForm onSuccess={showSuccess} onError={setError} />
         )}
 
         {tab === "sport" && (
@@ -235,8 +210,37 @@ export const LogEntryPage: React.FC = () => {
               ))}
             </select>
             <TurkishDateInput label="Tarih" value={sportDate} onChange={setSportDate} />
-            <label className="block text-sm font-medium">Süre</label>
-            <QuickDurationButtons value={sportMinutes} onChange={setSportMinutes} />
+            <DurationMinutesInput value={sportMinutes} onChange={setSportMinutes} />
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Mesafe (km, opsiyonel)</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={sportDistance}
+                onChange={(e) => setSportDistance(e.target.value)}
+                placeholder="örn. 13.5"
+                className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent text-base"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Strava linki (opsiyonel)</label>
+              <input
+                type="url"
+                value={sportStravaLink}
+                onChange={(e) => setSportStravaLink(e.target.value)}
+                placeholder="https://www.strava.com/activities/..."
+                className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent text-base"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Not (opsiyonel)</label>
+              <input
+                value={sportNote}
+                onChange={(e) => setSportNote(e.target.value)}
+                placeholder="Not..."
+                className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent text-base"
+              />
+            </div>
             <button type="submit" className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover-scale">
               Kaydet
             </button>
@@ -246,8 +250,7 @@ export const LogEntryPage: React.FC = () => {
         {tab === "meditation" && (
           <form onSubmit={submitMeditation} className="space-y-4">
             <TurkishDateInput label="Tarih" value={meditationDate} onChange={setMeditationDate} />
-            <label className="block text-sm font-medium">Süre</label>
-            <QuickDurationButtons value={meditationMinutes} onChange={setMeditationMinutes} options={[5, 10, 15, 20, 30, 45]} />
+            <DurationMinutesInput value={meditationMinutes} onChange={setMeditationMinutes} />
             <button type="submit" className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover-scale">
               Kaydet
             </button>
@@ -269,8 +272,7 @@ export const LogEntryPage: React.FC = () => {
               ))}
             </select>
             <TurkishDateInput label="Tarih" value={deepWorkDate} onChange={setDeepWorkDate} />
-            <label className="block text-sm font-medium">Süre</label>
-            <QuickDurationButtons value={deepWorkMinutes} onChange={setDeepWorkMinutes} />
+            <DurationMinutesInput value={deepWorkMinutes} onChange={setDeepWorkMinutes} />
             <label className="block text-sm font-medium">Açıklama (opsiyonel)</label>
             <input
               value={deepWorkDesc}

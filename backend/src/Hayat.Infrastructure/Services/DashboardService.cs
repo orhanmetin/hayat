@@ -29,14 +29,14 @@ namespace Hayat.Infrastructure.Services
             var bestStreak = habits.Count > 0 ? habits.Max(h => h.RecordStreak) : 0;
 
             var lastNightSleep = await _db.SleepLogs.AsNoTracking()
-                .Where(s => s.UserId == userId && DateOnly.FromDateTime(s.WakeTime) == today)
+                .Where(s => s.UserId == userId && s.WakeTime != null && DateOnly.FromDateTime(s.WakeTime!.Value) == today)
                 .OrderByDescending(s => s.WakeTime)
                 .FirstOrDefaultAsync();
 
             if (lastNightSleep == null)
             {
                 lastNightSleep = await _db.SleepLogs.AsNoTracking()
-                    .Where(s => s.UserId == userId && DateOnly.FromDateTime(s.WakeTime) == yesterday)
+                    .Where(s => s.UserId == userId && s.WakeTime != null && DateOnly.FromDateTime(s.WakeTime!.Value) == yesterday)
                     .OrderByDescending(s => s.WakeTime)
                     .FirstOrDefaultAsync();
             }
@@ -80,9 +80,11 @@ namespace Hayat.Infrastructure.Services
                 .ToList();
 
             var sleepByWakeDate = await _db.SleepLogs.AsNoTracking()
-                .Where(s => s.UserId == userId && DateOnly.FromDateTime(s.WakeTime) >= start && DateOnly.FromDateTime(s.WakeTime) <= today)
-                .GroupBy(s => DateOnly.FromDateTime(s.WakeTime))
-                .Select(g => new { Date = g.Key, Minutes = g.Sum(x => (int)(x.WakeTime - x.BedTime).TotalMinutes) })
+                .Where(s => s.UserId == userId && s.WakeTime != null
+                    && DateOnly.FromDateTime(s.WakeTime!.Value) >= start
+                    && DateOnly.FromDateTime(s.WakeTime!.Value) <= today)
+                .GroupBy(s => DateOnly.FromDateTime(s.WakeTime!.Value))
+                .Select(g => new { Date = g.Key, Minutes = g.Sum(x => (int)(x.WakeTime!.Value - x.BedTime).TotalMinutes) })
                 .ToListAsync();
 
             var sportByDate = await _db.SportActivities.AsNoTracking()

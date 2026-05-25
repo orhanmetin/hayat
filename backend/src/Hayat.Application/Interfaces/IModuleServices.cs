@@ -29,7 +29,9 @@ namespace Hayat.Application.Interfaces
     public interface IHealthService
     {
         Task<IReadOnlyList<SleepLogDto>> GetSleepLogsAsync(int userId, DateOnly? from, DateOnly? to);
+        Task<SleepLogDto?> GetOpenSleepLogAsync(int userId);
         Task<SleepLogDto?> CreateSleepLogAsync(int userId, CreateSleepLogRequest request);
+        Task<SleepLogDto?> CompleteSleepLogAsync(int userId, int id, CompleteSleepLogRequest request);
         Task<SleepLogDto?> UpdateSleepLogAsync(int userId, int id, UpdateSleepLogRequest request);
         Task<bool> DeleteSleepLogAsync(int userId, int id);
         Task<IReadOnlyList<SportActivityDto>> GetSportActivitiesAsync(int userId, DateOnly? from, DateOnly? to, int? typeId);

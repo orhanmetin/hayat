@@ -1,9 +1,6 @@
-import React, { useEffect, useState } from "react";
-import {
-  dateToTurkishInput,
-  parseTurkishDateTime,
-  timeToTurkishInput,
-} from "../../lib/format";
+import React from "react";
+import { DatePickerTurkish } from "./DatePickerTurkish";
+import { TimePickerDropdown } from "./TimePickerDropdown";
 import { cn } from "../../lib/utils";
 
 interface TurkishDateTimeInputProps {
@@ -19,67 +16,28 @@ export const TurkishDateTimeInput: React.FC<TurkishDateTimeInputProps> = ({
   onChange,
   className,
 }) => {
-  const [dateStr, setDateStr] = useState(() => dateToTurkishInput(value));
-  const [timeStr, setTimeStr] = useState(() => timeToTurkishInput(value));
-  const [invalid, setInvalid] = useState(false);
+  const handleDateChange = (nextDate: Date) => {
+    const merged = new Date(value);
+    merged.setFullYear(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
+    onChange(merged);
+  };
 
-  useEffect(() => {
-    setDateStr(dateToTurkishInput(value));
-    setTimeStr(timeToTurkishInput(value));
-    setInvalid(false);
-  }, [value]);
-
-  const tryEmit = (nextDate: string, nextTime: string) => {
-    setDateStr(nextDate);
-    setTimeStr(nextTime);
-    const parsed = parseTurkishDateTime(nextDate, nextTime);
-    if (parsed) {
-      setInvalid(false);
-      onChange(parsed);
-    } else {
-      setInvalid(nextDate.length > 0 || nextTime.length > 0);
-    }
+  const handleTimeChange = (hours: number, minutes: number) => {
+    const merged = new Date(value);
+    merged.setHours(hours, minutes, 0, 0);
+    onChange(merged);
   };
 
   return (
     <div className={cn("space-y-2", className)}>
       <label className="block text-sm font-medium">{label}</label>
-      <p className="text-xs text-slate-500">Gün.Ay.Yıl · Saat (24 saat, örn. 23:00)</p>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="GG.AA.YYYY"
-          value={dateStr}
-          onChange={(e) => tryEmit(e.target.value, timeStr)}
-          className={cn(
-            "flex-1 p-3 rounded-xl border bg-transparent text-base",
-            invalid
-              ? "border-red-400"
-              : "border-slate-200 dark:border-white/10"
-          )}
-          aria-invalid={invalid}
-        />
-        <input
-          type="text"
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder="SS:DD"
-          value={timeStr}
-          onChange={(e) => tryEmit(dateStr, e.target.value)}
-          className={cn(
-            "w-24 p-3 rounded-xl border bg-transparent text-base text-center",
-            invalid
-              ? "border-red-400"
-              : "border-slate-200 dark:border-white/10"
-          )}
-          aria-invalid={invalid}
-        />
-      </div>
-      {invalid && (
-        <p className="text-xs text-red-500">Örnek: 20.05.2026 ve 23:00</p>
-      )}
+      <p className="text-xs text-slate-500">Takvimden gün.ay.yıl seçin · Saat listeden</p>
+      <DatePickerTurkish value={value} onChange={handleDateChange} />
+      <TimePickerDropdown
+        hours={value.getHours()}
+        minutes={value.getMinutes()}
+        onChange={handleTimeChange}
+      />
     </div>
   );
 };

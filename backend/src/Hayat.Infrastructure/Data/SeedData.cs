@@ -13,6 +13,15 @@ namespace Hayat.Infrastructure.Data
             using var context = new AppDbContext(
                 serviceProvider.GetRequiredService<DbContextOptions<AppDbContext>>());
 
+            try
+            {
+                context.Database.ExecuteSqlRaw("DELETE FROM \"__EFMigrationsLock\"");
+            }
+            catch
+            {
+                // lock tablosu henüz yoksa yoksay
+            }
+
             context.Database.Migrate();
 
             if (!context.Users.Any())
@@ -29,6 +38,7 @@ namespace Hayat.Infrastructure.Data
 
             SeedLookupTypes(context);
             SeedSampleHabits(context);
+            DashboardTestDataSeeder.Seed(context);
         }
 
         private static void SeedLookupTypes(AppDbContext context)

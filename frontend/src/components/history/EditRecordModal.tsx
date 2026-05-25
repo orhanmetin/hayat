@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { healthApi, deepWorkApi, managementApi } from "../../services/modules";
-import { QuickDurationButtons } from "../ui/QuickDurationButtons";
+import { DurationMinutesInput } from "../ui/DurationMinutesInput";
+import { parseDistanceKm, normalizeStravaUrl } from "../../lib/sport";
 import { TurkishDateInput } from "../ui/TurkishDateInput";
 import { TurkishDateTimeInput } from "../ui/TurkishDateTimeInput";
 import { formatDate } from "../../lib/format";
@@ -39,12 +40,15 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
 
   const [bedDateTime, setBedDateTime] = useState(() => new Date());
   const [wakeDateTime, setWakeDateTime] = useState(() => new Date());
+  const [hasWake, setHasWake] = useState(true);
   const [quality, setQuality] = useState(4);
   const [sleepNote, setSleepNote] = useState("");
 
   const [sportTypeId, setSportTypeId] = useState(0);
   const [sportDate, setSportDate] = useState("");
   const [sportMinutes, setSportMinutes] = useState(30);
+  const [sportDistance, setSportDistance] = useState("");
+  const [sportStravaLink, setSportStravaLink] = useState("");
   const [sportNote, setSportNote] = useState("");
 
   const [meditationDate, setMeditationDate] = useState("");
@@ -66,8 +70,10 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
     if (payload.kind === "sleep") {
       const r = payload.record;
       setBedDateTime(new Date(r.bedTime));
-      setWakeDateTime(new Date(r.wakeTime));
-      setQuality(r.quality);
+      setHasWake(r.isComplete);
+      if (r.wakeTime) setWakeDateTime(new Date(r.wakeTime));
+      else setWakeDateTime(new Date());
+      setQuality(r.quality > 0 ? r.quality : 4);
       setSleepNote(r.note ?? "");
     }
     if (payload.kind === "sport") {
@@ -75,6 +81,8 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
       setSportTypeId(r.sportActivityTypeId);
       setSportDate(typeof r.date === "string" ? r.date.slice(0, 10) : r.date);
       setSportMinutes(r.durationMinutes);
+      setSportDistance(r.distanceKm != null ? String(r.distanceKm) : "");
+      setSportStravaLink(r.stravaLink ?? "");
       setSportNote(r.note ?? "");
     }
     if (payload.kind === "meditation") {
@@ -106,17 +114,35 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
     setError(null);
     try {
       if (payload.kind === "sleep") {
+        if (hasWake && wakeDateTime <= bedDateTime) {
+          setError("Kalkış zamanı yatıştan sonra olmalıdır.");
+          setSaving(false);
+          return;
+        }
         await healthApi.updateSleep(payload.record.id, {
           bedTime: bedDateTime.toISOString(),
-          wakeTime: wakeDateTime.toISOString(),
-          quality,
+          wakeTime: hasWake ? wakeDateTime.toISOString() : null,
+          quality: hasWake ? quality : null,
           note: sleepNote || undefined,
         });
       } else if (payload.kind === "sport") {
+        if (sportMinutes <= 0) {
+          setError("Geçerli bir süre girin (dakika).");
+          setSaving(false);
+          return;
+        }
+        const distanceKm = parseDistanceKm(sportDistance);
+        if (sportDistance.trim() && distanceKm === null) {
+          setError("Mesafe geçersiz. Örn: 13.5 (en fazla bir ondalık).");
+          setSaving(false);
+          return;
+        }
         await healthApi.updateSport(payload.record.id, {
           sportActivityTypeId: sportTypeId,
           date: sportDate,
           durationMinutes: sportMinutes,
+          distanceKm: distanceKm ?? null,
+          stravaLink: normalizeStravaUrl(sportStravaLink) ?? null,
           note: sportNote || undefined,
         });
       } else if (payload.kind === "meditation") {
@@ -161,39 +187,53 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
           {payload.kind === "sleep" && (
             <>
               <p className="text-xs text-slate-500">
-                Kalkış tarihi: <strong>{formatDate(payload.record.wakeDate)}</strong>
+                Liste tarihi: <strong>{formatDate(payload.record.listDate)}</strong>
               </p>
               <TurkishDateTimeInput
                 label="Yatış"
                 value={bedDateTime}
                 onChange={setBedDateTime}
               />
-              <TurkishDateTimeInput
-                label="Kalkış"
-                value={wakeDateTime}
-                onChange={setWakeDateTime}
-              />
-              <label className="block text-sm font-medium">Kalite (1-5)</label>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setQuality(q)}
-                    className={cn(
-                      "flex-1 py-2 rounded-xl font-bold border",
-                      quality === q ? "bg-primary text-white border-primary" : "border-slate-200 dark:border-white/10"
-                    )}
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-              <input
+              <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-white/10 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hasWake}
+                  onChange={(e) => setHasWake(e.target.checked)}
+                  className="mt-1"
+                />
+                <span className="text-sm">Kalkış zamanı girildi</span>
+              </label>
+              {hasWake && (
+                <>
+                  <TurkishDateTimeInput
+                    label="Kalkış"
+                    value={wakeDateTime}
+                    onChange={setWakeDateTime}
+                  />
+                  <label className="block text-sm font-medium">Kalite (1-5)</label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => setQuality(q)}
+                        className={cn(
+                          "flex-1 py-2 rounded-xl font-bold border",
+                          quality === q ? "bg-primary text-white border-primary" : "border-slate-200 dark:border-white/10"
+                        )}
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              <textarea
                 value={sleepNote}
                 onChange={(e) => setSleepNote(e.target.value)}
+                rows={2}
                 placeholder="Not (opsiyonel)"
-                className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent"
+                className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent resize-none"
               />
             </>
           )}
@@ -211,11 +251,32 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
                 ))}
               </select>
               <TurkishDateInput label="Tarih" value={sportDate} onChange={setSportDate} />
-              <QuickDurationButtons value={sportMinutes} onChange={setSportMinutes} />
+              <DurationMinutesInput value={sportMinutes} onChange={setSportMinutes} />
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Mesafe (km, opsiyonel)</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={sportDistance}
+                  onChange={(e) => setSportDistance(e.target.value)}
+                  placeholder="örn. 13.5"
+                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Strava linki (opsiyonel)</label>
+                <input
+                  type="url"
+                  value={sportStravaLink}
+                  onChange={(e) => setSportStravaLink(e.target.value)}
+                  placeholder="https://www.strava.com/activities/..."
+                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent"
+                />
+              </div>
               <input
                 value={sportNote}
                 onChange={(e) => setSportNote(e.target.value)}
-                placeholder="Not"
+                placeholder="Not (opsiyonel)"
                 className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent"
               />
             </>
@@ -224,11 +285,7 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
           {payload.kind === "meditation" && (
             <>
               <TurkishDateInput label="Tarih" value={meditationDate} onChange={setMeditationDate} />
-              <QuickDurationButtons
-                value={meditationMinutes}
-                onChange={setMeditationMinutes}
-                options={[5, 10, 15, 20, 30, 45]}
-              />
+              <DurationMinutesInput value={meditationMinutes} onChange={setMeditationMinutes} />
             </>
           )}
 
@@ -245,7 +302,7 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
                 ))}
               </select>
               <TurkishDateInput label="Tarih" value={deepWorkDate} onChange={setDeepWorkDate} />
-              <QuickDurationButtons value={deepWorkMinutes} onChange={setDeepWorkMinutes} />
+              <DurationMinutesInput value={deepWorkMinutes} onChange={setDeepWorkMinutes} />
               <input
                 value={deepWorkDesc}
                 onChange={(e) => setDeepWorkDesc(e.target.value)}

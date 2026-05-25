@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Hayat.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0478ef46ba0c884da92b7281bed8fc2594f0b558")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2db564a29677557809983d53f9c74f7c2a80146f")]
 [assembly: System.Reflection.AssemblyProductAttribute("Hayat.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Hayat.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

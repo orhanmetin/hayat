@@ -20,25 +20,45 @@ namespace Hayat.Infrastructure.Services
         {
             var query = _db.SleepLogs.AsNoTracking().Where(s => s.UserId == userId);
             if (from.HasValue)
-                query = query.Where(s => DateOnly.FromDateTime(s.WakeTime) >= from.Value);
+                query = query.Where(s => DateOnly.FromDateTime(s.WakeTime ?? s.BedTime) >= from.Value);
             if (to.HasValue)
-                query = query.Where(s => DateOnly.FromDateTime(s.WakeTime) <= to.Value);
+                query = query.Where(s => DateOnly.FromDateTime(s.WakeTime ?? s.BedTime) <= to.Value);
 
-            var logs = await query.OrderByDescending(s => s.WakeTime).ToListAsync();
+            var logs = await query
+                .OrderByDescending(s => s.WakeTime ?? s.BedTime)
+                .ToListAsync();
             return logs.Select(MapSleep).ToList();
+        }
+
+        public async Task<SleepLogDto?> GetOpenSleepLogAsync(int userId)
+        {
+            var log = await _db.SleepLogs.AsNoTracking()
+                .Where(s => s.UserId == userId && s.WakeTime == null)
+                .OrderByDescending(s => s.BedTime)
+                .FirstOrDefaultAsync();
+            return log == null ? null : MapSleep(log);
         }
 
         public async Task<SleepLogDto?> CreateSleepLogAsync(int userId, CreateSleepLogRequest request)
         {
-            if (request.WakeTime <= request.BedTime) return null;
-            if (request.Quality < 1 || request.Quality > 5) return null;
+            var hasWake = request.WakeTime.HasValue;
+            if (hasWake)
+            {
+                if (request.WakeTime!.Value <= request.BedTime) return null;
+                if (request.Quality is < 1 or > 5) return null;
+            }
+            else
+            {
+                var hasOpen = await _db.SleepLogs.AnyAsync(s => s.UserId == userId && s.WakeTime == null);
+                if (hasOpen) return null;
+            }
 
             var log = new SleepLog
             {
                 UserId = userId,
                 BedTime = request.BedTime,
                 WakeTime = request.WakeTime,
-                Quality = request.Quality,
+                Quality = hasWake ? request.Quality!.Value : 0,
                 Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim()
             };
             _db.SleepLogs.Add(log);
@@ -46,17 +66,45 @@ namespace Hayat.Infrastructure.Services
             return MapSleep(log);
         }
 
-        public async Task<SleepLogDto?> UpdateSleepLogAsync(int userId, int id, UpdateSleepLogRequest request)
+        public async Task<SleepLogDto?> CompleteSleepLogAsync(int userId, int id, CompleteSleepLogRequest request)
         {
-            if (request.WakeTime <= request.BedTime) return null;
             if (request.Quality < 1 || request.Quality > 5) return null;
 
+            var log = await _db.SleepLogs.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
+            if (log == null || log.WakeTime != null) return null;
+            if (request.WakeTime <= log.BedTime) return null;
+
+            log.WakeTime = request.WakeTime;
+            log.Quality = request.Quality;
+            if (!string.IsNullOrWhiteSpace(request.Note))
+            {
+                log.Note = string.IsNullOrWhiteSpace(log.Note)
+                    ? request.Note.Trim()
+                    : $"{log.Note} | {request.Note.Trim()}";
+            }
+
+            await _db.SaveChangesAsync();
+            return MapSleep(log);
+        }
+
+        public async Task<SleepLogDto?> UpdateSleepLogAsync(int userId, int id, UpdateSleepLogRequest request)
+        {
             var log = await _db.SleepLogs.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
             if (log == null) return null;
 
             log.BedTime = request.BedTime;
             log.WakeTime = request.WakeTime;
-            log.Quality = request.Quality;
+            if (request.WakeTime.HasValue)
+            {
+                if (request.WakeTime.Value <= request.BedTime) return null;
+                if (request.Quality is < 1 or > 5) return null;
+                log.Quality = request.Quality!.Value;
+            }
+            else
+            {
+                log.Quality = 0;
+            }
+
             log.Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
             await _db.SaveChangesAsync();
             return MapSleep(log);
@@ -81,14 +129,16 @@ namespace Hayat.Infrastructure.Services
             if (to.HasValue) query = query.Where(a => a.Date <= to.Value);
             if (typeId.HasValue) query = query.Where(a => a.SportActivityTypeId == typeId.Value);
 
-            return await query.OrderByDescending(a => a.Date)
-                .Select(a => new SportActivityDto(a.Id, a.SportActivityTypeId, a.SportActivityType.Name, a.Date, a.DurationMinutes, a.Note))
-                .ToListAsync();
+            var list = await query.OrderByDescending(a => a.Date).ToListAsync();
+            return list.Select(MapSport).ToList();
         }
 
         public async Task<SportActivityDto?> CreateSportActivityAsync(int userId, CreateSportActivityRequest request)
         {
             if (request.DurationMinutes <= 0) return null;
+            if (!TryNormalizeDistance(request.DistanceKm, out var distanceKm)) return null;
+            if (!TryNormalizeStravaLink(request.StravaLink, out var stravaLink)) return null;
+
             var typeExists = await _db.SportActivityTypes.AnyAsync(t => t.Id == request.SportActivityTypeId && t.IsActive);
             if (!typeExists) return null;
 
@@ -98,18 +148,23 @@ namespace Hayat.Infrastructure.Services
                 SportActivityTypeId = request.SportActivityTypeId,
                 Date = request.Date,
                 DurationMinutes = request.DurationMinutes,
+                DistanceKm = distanceKm,
+                StravaLink = stravaLink,
                 Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim()
             };
             _db.SportActivities.Add(activity);
             await _db.SaveChangesAsync();
 
-            var typeName = await _db.SportActivityTypes.Where(t => t.Id == activity.SportActivityTypeId).Select(t => t.Name).FirstAsync();
-            return new SportActivityDto(activity.Id, activity.SportActivityTypeId, typeName, activity.Date, activity.DurationMinutes, activity.Note);
+            await _db.Entry(activity).Reference(a => a.SportActivityType).LoadAsync();
+            return MapSport(activity);
         }
 
         public async Task<SportActivityDto?> UpdateSportActivityAsync(int userId, int id, UpdateSportActivityRequest request)
         {
             if (request.DurationMinutes <= 0) return null;
+            if (!TryNormalizeDistance(request.DistanceKm, out var distanceKm)) return null;
+            if (!TryNormalizeStravaLink(request.StravaLink, out var stravaLink)) return null;
+
             var typeExists = await _db.SportActivityTypes.AnyAsync(t => t.Id == request.SportActivityTypeId && t.IsActive);
             if (!typeExists) return null;
 
@@ -121,16 +176,12 @@ namespace Hayat.Infrastructure.Services
             activity.SportActivityTypeId = request.SportActivityTypeId;
             activity.Date = request.Date;
             activity.DurationMinutes = request.DurationMinutes;
+            activity.DistanceKm = distanceKm;
+            activity.StravaLink = stravaLink;
             activity.Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
             await _db.SaveChangesAsync();
 
-            return new SportActivityDto(
-                activity.Id,
-                activity.SportActivityTypeId,
-                activity.SportActivityType.Name,
-                activity.Date,
-                activity.DurationMinutes,
-                activity.Note);
+            return MapSport(activity);
         }
 
         public async Task<bool> DeleteSportActivityAsync(int userId, int id)
@@ -183,8 +234,46 @@ namespace Hayat.Infrastructure.Services
             return true;
         }
 
+        private static SportActivityDto MapSport(SportActivity a) => new(
+            a.Id,
+            a.SportActivityTypeId,
+            a.SportActivityType.Name,
+            a.Date,
+            a.DurationMinutes,
+            a.DistanceKm,
+            a.StravaLink,
+            a.Note);
+
+        private static bool TryNormalizeDistance(decimal? km, out decimal? normalized)
+        {
+            normalized = null;
+            if (!km.HasValue) return true;
+            if (km.Value < 0 || km.Value > 9999.9m) return false;
+            normalized = Math.Round(km.Value, 1, MidpointRounding.AwayFromZero);
+            return true;
+        }
+
+        private static bool TryNormalizeStravaLink(string? link, out string? normalized)
+        {
+            normalized = null;
+            if (string.IsNullOrWhiteSpace(link)) return true;
+            var trimmed = link.Trim();
+            if (trimmed.Length > 500) return false;
+            normalized = trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                || trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                ? trimmed
+                : $"https://{trimmed}";
+            return true;
+        }
+
         private static SleepLogDto MapSleep(SleepLog log) => new(
-            log.Id, log.BedTime, log.WakeTime, log.DurationMinutes, log.Quality, log.Note,
-            DateOnly.FromDateTime(log.WakeTime));
+            log.Id,
+            log.BedTime,
+            log.WakeTime,
+            log.DurationMinutes,
+            log.Quality,
+            log.Note,
+            DateOnly.FromDateTime(log.WakeTime ?? log.BedTime),
+            log.IsComplete);
     }
 }
