@@ -154,4 +154,72 @@ namespace Hayat.Application.DTOs
         string Period,
         IReadOnlyList<DashboardChartDto> Charts
     );
+
+    // --- Dashboard v2 (period / bucket / subtype) ---
+    public record CategoryBreakdownItemDto(string Name, int Minutes);
+
+    public record SportCardDto(
+        int TotalMinutes,
+        int? TargetMinutes,
+        IReadOnlyList<CategoryBreakdownItemDto> Breakdown
+    );
+
+    public record SleepCardDto(
+        int TotalMinutes,
+        int AverageMinutesPerDay,
+        int? TargetAverageMinutesPerDay
+    );
+
+    public record DeepWorkCardDto(
+        int TotalMinutes,
+        int AverageMinutesPerDay,
+        int? TargetAverageMinutesPerDay,
+        IReadOnlyList<CategoryBreakdownItemDto> Breakdown
+    );
+
+    public record MeditationCardDto(
+        int TotalMinutes,
+        int AverageMinutesPerDay,
+        int? TargetAverageMinutesPerDay
+    );
+
+    public record DashboardCardsDto(
+        SportCardDto Sport,
+        SleepCardDto Sleep,
+        DeepWorkCardDto DeepWork,
+        MeditationCardDto Meditation
+    );
+
+    public record TimeBucketValueDto(string Key, string Label, int Minutes);
+
+    public record StackedBucketDto(
+        string Key,
+        string Label,
+        int Total,
+        Dictionary<string, int> Segments
+    );
+
+    public record StackedSeriesDto(
+        IReadOnlyList<string> Categories,
+        IReadOnlyList<StackedBucketDto> Buckets
+    );
+
+    public record DashboardSeriesDto(
+        IReadOnlyList<TimeBucketValueDto> Sleep,
+        IReadOnlyList<TimeBucketValueDto> Meditation,
+        StackedSeriesDto Sport,
+        StackedSeriesDto DeepWork
+    );
+
+    public record DashboardOverviewDto(
+        string Period,
+        string Bucket,
+        IReadOnlyList<string> AvailableBuckets,
+        DateOnly RangeStart,
+        DateOnly RangeEnd,
+        int DaysElapsed,
+        bool ShowTargets,
+        DashboardCardsDto Cards,
+        DashboardSeriesDto Series
+    );
 }

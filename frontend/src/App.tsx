@@ -7,7 +7,9 @@ import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LogEntryPage } from "./pages/LogEntryPage";
 import { HabitsPage } from "./pages/HabitsPage";
-import { ManagementPage } from "./pages/ManagementPage";
+import { ManagementLayout } from "./pages/management/ManagementLayout";
+import { WeeklyGoalsPanel } from "./components/management/WeeklyGoalsPanel";
+import { ActivityTypesPanel } from "./components/management/ActivityTypesPanel";
 
 const App: React.FC = () => {
   return (
@@ -22,7 +24,11 @@ const App: React.FC = () => {
               <Route path="/dashboard" element={<Navigate to="/" replace />} />
               <Route path="/log" element={<LogEntryPage />} />
               <Route path="/habits" element={<HabitsPage />} />
-              <Route path="/management" element={<ManagementPage />} />
+              <Route path="/management" element={<ManagementLayout />}>
+                <Route index element={<Navigate to="goals" replace />} />
+                <Route path="goals" element={<WeeklyGoalsPanel />} />
+                <Route path="activity-types" element={<ActivityTypesPanel />} />
+              </Route>
             </Route>
           </Route>
 

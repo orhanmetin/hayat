@@ -39,6 +39,83 @@ export interface DashboardAnalytics {
   charts: DashboardChart[];
 }
 
+export type DashboardPeriod = "weekly" | "monthly" | "yearly";
+export type DashboardBucket = "daily" | "weekly" | "monthly";
+
+export interface CategoryBreakdownItem {
+  name: string;
+  minutes: number;
+}
+
+export interface SportCard {
+  totalMinutes: number;
+  targetMinutes: number | null;
+  breakdown: CategoryBreakdownItem[];
+}
+
+export interface SleepCard {
+  totalMinutes: number;
+  averageMinutesPerDay: number;
+  targetAverageMinutesPerDay: number | null;
+}
+
+export interface DeepWorkCard {
+  totalMinutes: number;
+  averageMinutesPerDay: number;
+  targetAverageMinutesPerDay: number | null;
+  breakdown: CategoryBreakdownItem[];
+}
+
+export interface MeditationCard {
+  totalMinutes: number;
+  averageMinutesPerDay: number;
+  targetAverageMinutesPerDay: number | null;
+}
+
+export interface DashboardCards {
+  sport: SportCard;
+  sleep: SleepCard;
+  deepWork: DeepWorkCard;
+  meditation: MeditationCard;
+}
+
+export interface TimeBucketValue {
+  key: string;
+  label: string;
+  minutes: number;
+}
+
+export interface StackedBucket {
+  key: string;
+  label: string;
+  total: number;
+  segments: Record<string, number>;
+}
+
+export interface StackedSeries {
+  categories: string[];
+  buckets: StackedBucket[];
+}
+
+export interface DashboardSeries {
+  sleep: TimeBucketValue[];
+  meditation: TimeBucketValue[];
+  sport: StackedSeries;
+  deepWork: StackedSeries;
+}
+
+export interface DashboardOverview {
+  period: DashboardPeriod;
+  bucket: DashboardBucket;
+  availableBuckets: DashboardBucket[];
+  rangeStart: string;
+  rangeEnd: string;
+  daysElapsed: number;
+  showTargets: boolean;
+  cards: DashboardCards;
+  series: DashboardSeries;
+}
+
 export interface WeeklyGoal {
   id: number;
   year: number;

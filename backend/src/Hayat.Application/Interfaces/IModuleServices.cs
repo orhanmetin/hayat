@@ -63,5 +63,6 @@ namespace Hayat.Application.Interfaces
     {
         Task<DashboardSummaryDto> GetSummaryAsync(int userId);
         Task<DashboardAnalyticsDto> GetAnalyticsAsync(int userId, string period);
+        Task<DashboardOverviewDto> GetOverviewAsync(int userId, string period, string? bucket);
     }
 }

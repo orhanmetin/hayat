@@ -15,7 +15,7 @@ import { cn } from "../../lib/utils";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/log", label: "Kayıt Ekle", icon: PlusCircle },
+  { to: "/log", label: "Olaylar", icon: PlusCircle },
   { to: "/habits", label: "Alışkanlıklar", icon: CheckSquare },
   { to: "/management", label: "Yönetim", icon: Settings },
 ];
@@ -83,7 +83,7 @@ export const AppLayout: React.FC = () => {
             <span className="text-lg font-bold">hayat</span>
           </div>
           <h2 className="hidden md:block text-lg font-semibold text-slate-800 dark:text-emerald-300">
-            Yaşam Tarzı Takibi
+            Hayat Takibi
           </h2>
           <div className="flex items-center gap-2 ml-auto">
             <button

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Hayat.Application.Common;
 using Hayat.Application.DTOs;
 using Hayat.Application.Interfaces;
 using Hayat.Infrastructure.Data;
@@ -12,6 +13,12 @@ namespace Hayat.Infrastructure.Services
     public class DashboardService : IDashboardService
     {
         private readonly AppDbContext _db;
+
+        private static readonly string[] TrShortMonths =
+            { "Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara" };
+
+        private static readonly string[] TrShortDays =
+            { "Pzr", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt" };
 
         public DashboardService(AppDbContext db) => _db = db;
 
@@ -66,67 +73,266 @@ namespace Hayat.Infrastructure.Services
 
         public async Task<DashboardAnalyticsDto> GetAnalyticsAsync(int userId, string period)
         {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            var days = period?.ToLowerInvariant() switch
-            {
-                "weekly" => 7,
-                "monthly" => 30,
-                _ => 7
-            };
-
-            var start = today.AddDays(-(days - 1));
-            var labels = Enumerable.Range(0, days)
-                .Select(i => start.AddDays(i))
-                .ToList();
-
-            var sleepByWakeDate = await _db.SleepLogs.AsNoTracking()
-                .Where(s => s.UserId == userId && s.WakeTime != null
-                    && DateOnly.FromDateTime(s.WakeTime!.Value) >= start
-                    && DateOnly.FromDateTime(s.WakeTime!.Value) <= today)
-                .GroupBy(s => DateOnly.FromDateTime(s.WakeTime!.Value))
-                .Select(g => new { Date = g.Key, Minutes = g.Sum(x => (int)(x.WakeTime!.Value - x.BedTime).TotalMinutes) })
-                .ToListAsync();
-
-            var sportByDate = await _db.SportActivities.AsNoTracking()
-                .Where(s => s.UserId == userId && s.Date >= start && s.Date <= today)
-                .GroupBy(s => s.Date)
-                .Select(g => new { Date = g.Key, Minutes = g.Sum(x => x.DurationMinutes) })
-                .ToListAsync();
-
-            var meditationByDate = await _db.MeditationSessions.AsNoTracking()
-                .Where(s => s.UserId == userId && s.Date >= start && s.Date <= today)
-                .GroupBy(s => s.Date)
-                .Select(g => new { Date = g.Key, Minutes = g.Sum(x => x.DurationMinutes) })
-                .ToListAsync();
-
-            var deepWorkByDate = await _db.DeepWorkSessions.AsNoTracking()
-                .Where(s => s.UserId == userId && s.Date >= start && s.Date <= today)
-                .GroupBy(s => s.Date)
-                .Select(g => new { Date = g.Key, Minutes = g.Sum(x => x.DurationMinutes) })
-                .ToListAsync();
-
-            double GetValue<T>(List<T> data, DateOnly date, Func<T, DateOnly> dateSel, Func<T, int> valSel) =>
-                data.Where(x => dateSel(x) == date).Select(valSel).DefaultIfEmpty(0).Sum();
-
+            var overview = await GetOverviewAsync(userId, period, null);
             var charts = new List<DashboardChartDto>
             {
-                BuildChart("Uyku (dk)", labels, d => GetValue(sleepByWakeDate, d, x => x.Date, x => x.Minutes)),
-                BuildChart("Spor (dk)", labels, d => GetValue(sportByDate, d, x => x.Date, x => x.Minutes)),
-                BuildChart("Meditasyon (dk)", labels, d => GetValue(meditationByDate, d, x => x.Date, x => x.Minutes)),
-                BuildChart("Deep Work (dk)", labels, d => GetValue(deepWorkByDate, d, x => x.Date, x => x.Minutes))
+                new("Uyku (dk)", overview.Series.Sleep.Select(p => new ChartDataPointDto(p.Label, p.Minutes)).ToList()),
+                new("Spor (dk)", overview.Series.Sport.Buckets.Select(b => new ChartDataPointDto(b.Label, b.Total)).ToList()),
+                new("Meditasyon (dk)", overview.Series.Meditation.Select(p => new ChartDataPointDto(p.Label, p.Minutes)).ToList()),
+                new("Deep Work (dk)", overview.Series.DeepWork.Buckets.Select(b => new ChartDataPointDto(b.Label, b.Total)).ToList())
             };
-
-            return new DashboardAnalyticsDto(period ?? "weekly", charts);
+            return new DashboardAnalyticsDto(overview.Period, charts);
         }
 
-        private static DashboardChartDto BuildChart(string title, List<DateOnly> labels, Func<DateOnly, double> getValue)
+        public async Task<DashboardOverviewDto> GetOverviewAsync(int userId, string period, string? bucket)
         {
-            var points = labels.Select(d => new ChartDataPointDto(
-                $"{d.Day:D2}.{d.Month:D2}.{d.Year}",
-                getValue(d)
-            )).ToList();
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-            return new DashboardChartDto(title, points);
+            var normalizedPeriod = (period ?? string.Empty).ToLowerInvariant() switch
+            {
+                "monthly" => "monthly",
+                "yearly" => "yearly",
+                _ => "weekly"
+            };
+
+            var rangeStart = normalizedPeriod switch
+            {
+                "monthly" => new DateOnly(today.Year, today.Month, 1),
+                "yearly" => new DateOnly(today.Year, 1, 1),
+                _ => StartOfIsoWeek(today)
+            };
+
+            var allowedBuckets = normalizedPeriod switch
+            {
+                "weekly" => new[] { "daily" },
+                "monthly" => new[] { "weekly", "daily" },
+                "yearly" => new[] { "monthly", "weekly", "daily" },
+                _ => new[] { "daily" }
+            };
+            var requestedBucket = (bucket ?? string.Empty).ToLowerInvariant();
+            var normalizedBucket = Array.IndexOf(allowedBuckets, requestedBucket) >= 0
+                ? requestedBucket
+                : allowedBuckets[0];
+
+            var showTargets = normalizedPeriod == "weekly";
+            var daysElapsed = today.DayNumber - rangeStart.DayNumber + 1;
+
+            // ---- Raw queries ----
+            var sleepRows = await _db.SleepLogs.AsNoTracking()
+                .Where(s => s.UserId == userId && s.WakeTime != null
+                    && DateOnly.FromDateTime(s.WakeTime!.Value) >= rangeStart
+                    && DateOnly.FromDateTime(s.WakeTime!.Value) <= today)
+                .Select(s => new
+                {
+                    Date = DateOnly.FromDateTime(s.WakeTime!.Value),
+                    Minutes = (int)(s.WakeTime!.Value - s.BedTime).TotalMinutes
+                })
+                .ToListAsync();
+
+            var sportRows = await _db.SportActivities.AsNoTracking()
+                .Where(s => s.UserId == userId && s.Date >= rangeStart && s.Date <= today)
+                .Include(s => s.SportActivityType)
+                .Select(s => new
+                {
+                    s.Date,
+                    s.DurationMinutes,
+                    TypeName = s.SportActivityType.Name
+                })
+                .ToListAsync();
+
+            var deepWorkRows = await _db.DeepWorkSessions.AsNoTracking()
+                .Where(s => s.UserId == userId && s.Date >= rangeStart && s.Date <= today)
+                .Include(s => s.DeepWorkType)
+                .Select(s => new
+                {
+                    s.Date,
+                    s.DurationMinutes,
+                    TypeName = s.DeepWorkType.Name
+                })
+                .ToListAsync();
+
+            var meditationRows = await _db.MeditationSessions.AsNoTracking()
+                .Where(s => s.UserId == userId && s.Date >= rangeStart && s.Date <= today)
+                .Select(s => new { s.Date, s.DurationMinutes })
+                .ToListAsync();
+
+            // ---- Card aggregates ----
+            var sportTotal = sportRows.Sum(s => s.DurationMinutes);
+            var sportBreakdown = sportRows
+                .GroupBy(s => s.TypeName)
+                .Select(g => new CategoryBreakdownItemDto(g.Key, g.Sum(x => x.DurationMinutes)))
+                .OrderByDescending(b => b.Minutes)
+                .ToList();
+
+            var sleepTotal = sleepRows.Sum(s => s.Minutes);
+            var sleepAvg = daysElapsed > 0 ? sleepTotal / daysElapsed : 0;
+
+            var deepWorkTotal = deepWorkRows.Sum(s => s.DurationMinutes);
+            var deepWorkAvg = daysElapsed > 0 ? deepWorkTotal / daysElapsed : 0;
+            var deepWorkBreakdown = deepWorkRows
+                .GroupBy(s => s.TypeName)
+                .Select(g => new CategoryBreakdownItemDto(g.Key, g.Sum(x => x.DurationMinutes)))
+                .OrderByDescending(b => b.Minutes)
+                .ToList();
+
+            var meditationTotal = meditationRows.Sum(s => s.DurationMinutes);
+            var meditationAvg = daysElapsed > 0 ? meditationTotal / daysElapsed : 0;
+
+            int? sleepTarget = null, sportTarget = null, deepWorkTarget = null, meditationTarget = null;
+            if (showTargets)
+            {
+                var (year, week) = WeekHelper.GetIsoWeek(today);
+                var goal = await _db.WeeklyGoals.AsNoTracking()
+                    .FirstOrDefaultAsync(g => g.UserId == userId && g.Year == year && g.WeekNumber == week);
+                if (goal != null)
+                {
+                    sleepTarget = goal.TargetAvgSleepMinutesPerDay;
+                    sportTarget = goal.TargetTotalSportMinutes;
+                    deepWorkTarget = goal.TargetAvgDeepWorkMinutesPerDay;
+                    meditationTarget = goal.TargetAvgMeditationMinutesPerDay;
+                }
+            }
+
+            // ---- Buckets ----
+            var bucketDefs = BuildBuckets(rangeStart, today, normalizedPeriod, normalizedBucket);
+
+            var sleepSeries = BuildSimpleSeries(bucketDefs, sleepRows.Select(r => (r.Date, r.Minutes)));
+            var meditationSeries = BuildSimpleSeries(bucketDefs, meditationRows.Select(r => (r.Date, r.DurationMinutes)));
+            var sportStacked = BuildStackedSeries(bucketDefs, sportRows.Select(r => (r.Date, r.TypeName, r.DurationMinutes)));
+            var deepWorkStacked = BuildStackedSeries(bucketDefs, deepWorkRows.Select(r => (r.Date, r.TypeName, r.DurationMinutes)));
+
+            var cards = new DashboardCardsDto(
+                new SportCardDto(sportTotal, sportTarget, sportBreakdown),
+                new SleepCardDto(sleepTotal, sleepAvg, sleepTarget),
+                new DeepWorkCardDto(deepWorkTotal, deepWorkAvg, deepWorkTarget, deepWorkBreakdown),
+                new MeditationCardDto(meditationTotal, meditationAvg, meditationTarget)
+            );
+
+            var series = new DashboardSeriesDto(sleepSeries, meditationSeries, sportStacked, deepWorkStacked);
+
+            return new DashboardOverviewDto(
+                normalizedPeriod,
+                normalizedBucket,
+                allowedBuckets,
+                rangeStart,
+                today,
+                daysElapsed,
+                showTargets,
+                cards,
+                series
+            );
+        }
+
+        // ---- Bucket helpers ----
+
+        private record struct BucketDef(string Key, string Label, DateOnly Start, DateOnly End);
+
+        private static List<BucketDef> BuildBuckets(DateOnly rangeStart, DateOnly rangeEnd, string period, string bucket)
+        {
+            var result = new List<BucketDef>();
+
+            switch (bucket)
+            {
+                case "daily":
+                    var bigDailyRange = (rangeEnd.DayNumber - rangeStart.DayNumber) > 9;
+                    for (var d = rangeStart; d <= rangeEnd; d = d.AddDays(1))
+                    {
+                        var key = d.ToString("yyyy-MM-dd");
+                        var label = bigDailyRange
+                            ? $"{d.Day:D2}.{d.Month:D2}"
+                            : TrShortDays[(int)d.DayOfWeek];
+                        result.Add(new BucketDef(key, label, d, d));
+                    }
+                    break;
+
+                case "weekly":
+                    var cursor = rangeStart;
+                    var weekIndex = 1;
+                    while (cursor <= rangeEnd)
+                    {
+                        var weekStart = StartOfIsoWeek(cursor);
+                        var weekEnd = weekStart.AddDays(6);
+                        var (year, week) = WeekHelper.GetIsoWeek(weekStart);
+                        var clampedStart = weekStart < rangeStart ? rangeStart : weekStart;
+                        var clampedEnd = weekEnd > rangeEnd ? rangeEnd : weekEnd;
+                        var key = $"{year:D4}-W{week:D2}";
+                        var label = period == "monthly"
+                            ? $"{weekIndex}. Hafta"
+                            : $"H{week}";
+                        result.Add(new BucketDef(key, label, clampedStart, clampedEnd));
+                        cursor = weekEnd.AddDays(1);
+                        weekIndex++;
+                    }
+                    break;
+
+                case "monthly":
+                    var monthCursor = new DateOnly(rangeStart.Year, rangeStart.Month, 1);
+                    while (monthCursor <= rangeEnd)
+                    {
+                        var monthStart = monthCursor;
+                        var monthEnd = new DateOnly(
+                            monthCursor.Year,
+                            monthCursor.Month,
+                            DateTime.DaysInMonth(monthCursor.Year, monthCursor.Month));
+                        var clampedStart = monthStart < rangeStart ? rangeStart : monthStart;
+                        var clampedEnd = monthEnd > rangeEnd ? rangeEnd : monthEnd;
+                        var key = $"{monthCursor.Year:D4}-{monthCursor.Month:D2}";
+                        var label = TrShortMonths[monthCursor.Month - 1];
+                        result.Add(new BucketDef(key, label, clampedStart, clampedEnd));
+                        monthCursor = monthStart.AddMonths(1);
+                    }
+                    break;
+            }
+
+            return result;
+        }
+
+        private static List<TimeBucketValueDto> BuildSimpleSeries(
+            List<BucketDef> buckets,
+            IEnumerable<(DateOnly Date, int Minutes)> data)
+        {
+            var dataList = data.ToList();
+            return buckets.Select(b =>
+                new TimeBucketValueDto(
+                    b.Key,
+                    b.Label,
+                    dataList.Where(d => d.Date >= b.Start && d.Date <= b.End).Sum(d => d.Minutes)
+                )
+            ).ToList();
+        }
+
+        private static StackedSeriesDto BuildStackedSeries(
+            List<BucketDef> buckets,
+            IEnumerable<(DateOnly Date, string TypeName, int Minutes)> data)
+        {
+            var dataList = data.ToList();
+
+            var categories = dataList
+                .GroupBy(d => d.TypeName)
+                .Select(g => new { Name = g.Key, Total = g.Sum(x => x.Minutes) })
+                .OrderByDescending(g => g.Total)
+                .Select(g => g.Name)
+                .ToList();
+
+            var stackedBuckets = buckets.Select(b =>
+            {
+                var inRange = dataList.Where(d => d.Date >= b.Start && d.Date <= b.End).ToList();
+                var segments = new Dictionary<string, int>();
+                foreach (var cat in categories)
+                {
+                    segments[cat] = inRange.Where(d => d.TypeName == cat).Sum(d => d.Minutes);
+                }
+                return new StackedBucketDto(b.Key, b.Label, inRange.Sum(d => d.Minutes), segments);
+            }).ToList();
+
+            return new StackedSeriesDto(categories, stackedBuckets);
+        }
+
+        private static DateOnly StartOfIsoWeek(DateOnly date)
+        {
+            int dow = (int)date.DayOfWeek;
+            int diff = dow == 0 ? 6 : dow - 1;
+            return date.AddDays(-diff);
         }
     }
 }

@@ -1,6 +1,9 @@
 import { apiClient } from "./api";
 import type {
   DashboardAnalytics,
+  DashboardBucket,
+  DashboardOverview,
+  DashboardPeriod,
   DashboardSummary,
   DeepWorkSession,
   Habit,
@@ -16,6 +19,10 @@ export const dashboardApi = {
   getSummary: () => apiClient.get<DashboardSummary>("/dashboard/summary"),
   getAnalytics: (period: string) =>
     apiClient.get<DashboardAnalytics>(`/dashboard/analytics?period=${period}`),
+  getOverview: (period: DashboardPeriod, bucket?: DashboardBucket) =>
+    apiClient.get<DashboardOverview>("/dashboard/overview", {
+      params: { period, bucket },
+    }),
 };
 
 export const habitsApi = {

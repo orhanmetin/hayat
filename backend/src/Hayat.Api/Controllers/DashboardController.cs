@@ -28,5 +28,15 @@ namespace Hayat.Api.Controllers
             if (userId == null) return UnauthorizedUser();
             return Ok(await _service.GetAnalyticsAsync(userId.Value, period));
         }
+
+        [HttpGet("overview")]
+        public async Task<IActionResult> GetOverview(
+            [FromQuery] string period = "weekly",
+            [FromQuery] string? bucket = null)
+        {
+            var userId = GetUserId();
+            if (userId == null) return UnauthorizedUser();
+            return Ok(await _service.GetOverviewAsync(userId.Value, period, bucket));
+        }
     }
 }

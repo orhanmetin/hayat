@@ -1,78 +1,117 @@
-import React, { useEffect, useState } from "react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
-import {
-  MoonStar,
-  Activity,
-  Brain,
-  Trophy,
-  Sparkles,
-  Flower2,
-} from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Activity, MoonStar, Brain, Flower2, Sparkles } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { dashboardApi } from "../services/modules";
-import { formatChartDate, formatMinutes } from "../lib/format";
-import type { DashboardAnalytics, DashboardSummary } from "../types/modules";
-import { cn } from "../lib/utils";
+import { formatDate } from "../lib/format";
+import {
+  DASHBOARD_PERIODS,
+  BUCKET_LABELS,
+  CARD_META,
+  type DashboardCardKey,
+} from "../config/dashboard";
+import { SegmentedControl } from "../components/dashboard/SegmentedControl";
+import { SummaryCard } from "../components/dashboard/SummaryCard";
+import { SimpleBarChart } from "../components/dashboard/SimpleBarChart";
+import { StackedBarChart } from "../components/dashboard/StackedBarChart";
+import type {
+  DashboardBucket,
+  DashboardOverview,
+  DashboardPeriod,
+} from "../types/modules";
+
+const CARD_ICONS = {
+  sport: Activity,
+  sleep: MoonStar,
+  deepwork: Brain,
+  meditation: Flower2,
+} as const;
+
+const PERIOD_PRIMARY_LABEL: Record<DashboardPeriod, Record<"total" | "averagePerDay", string>> = {
+  weekly: {
+    total: "Bu hafta toplam",
+    averagePerDay: "Günlük ortalama",
+  },
+  monthly: {
+    total: "Bu ay toplam",
+    averagePerDay: "Günlük ortalama",
+  },
+  yearly: {
+    total: "Bu yıl toplam",
+    averagePerDay: "Günlük ortalama",
+  },
+};
 
 export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
-  const [period, setPeriod] = useState("weekly");
+  const [period, setPeriod] = useState<DashboardPeriod>("weekly");
+  const [bucket, setBucket] = useState<DashboardBucket | null>(null);
+  const [overview, setOverview] = useState<DashboardOverview | null>(null);
+  const [activeCard, setActiveCard] = useState<DashboardCardKey>("sport");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       setLoading(true);
       try {
-        const [s, a] = await Promise.all([
-          dashboardApi.getSummary(),
-          dashboardApi.getAnalytics(period),
-        ]);
-        setSummary(s.data);
-        setAnalytics(a.data);
+        const res = await dashboardApi.getOverview(period, bucket ?? undefined);
+        if (cancelled) return;
+        setOverview(res.data);
+        if (bucket && !res.data.availableBuckets.includes(bucket)) {
+          setBucket(null);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
     load();
-  }, [period]);
+    return () => {
+      cancelled = true;
+    };
+  }, [period, bucket]);
 
-  const stats = [
-    {
-      label: "Uyku",
-      value: formatMinutes(summary?.lastNightSleepMinutes ?? 0),
-      icon: MoonStar,
-      color: "text-blue-500 bg-blue-500/10",
-    },
-    {
-      label: "Spor (Bugün)",
-      value: formatMinutes(summary?.todaySportMinutes ?? 0),
-      icon: Activity,
-      color: "text-amber-500 bg-amber-500/10",
-    },
-    {
-      label: "Deep Work",
-      value: formatMinutes(summary?.todayDeepWorkMinutes ?? 0),
-      icon: Brain,
-      color: "text-violet-500 bg-violet-500/10",
-    },
-    {
-      label: "Alışkanlık Serisi",
-      value: `${summary?.habitStreakBest ?? 0} gün`,
-      sub: `${summary?.habitsCompletedToday ?? 0}/${summary?.totalHabits ?? 0} bugün`,
-      icon: Trophy,
-      color: "text-emerald-500 bg-emerald-500/10",
-    },
-  ];
+  const handlePeriodChange = (next: DashboardPeriod) => {
+    setPeriod(next);
+    setBucket(null);
+  };
+
+  const bucketOptions = useMemo(() => {
+    if (!overview || overview.availableBuckets.length <= 1) return null;
+    return overview.availableBuckets.map((id) => ({ id, label: BUCKET_LABELS[id] }));
+  }, [overview]);
+
+  const cards = overview?.cards;
+  const series = overview?.series;
+  const showTargets = overview?.showTargets ?? false;
+  const primaryLabels = PERIOD_PRIMARY_LABEL[period];
+
+  const renderActiveChart = () => {
+    if (!overview || !series) return null;
+    if (activeCard === "sport") return <StackedBarChart series={series.sport} />;
+    if (activeCard === "deepwork") return <StackedBarChart series={series.deepWork} />;
+    if (activeCard === "sleep") {
+      return (
+        <SimpleBarChart
+          data={series.sleep}
+          color={CARD_META.sleep.primaryColor}
+          targetMinutes={
+            showTargets ? cards?.sleep.targetAverageMinutesPerDay : null
+          }
+          targetLabel="Günlük hedef"
+        />
+      );
+    }
+    return (
+      <SimpleBarChart
+        data={series.meditation}
+        color={CARD_META.meditation.primaryColor}
+        targetMinutes={
+          showTargets ? cards?.meditation.targetAverageMinutesPerDay : null
+        }
+        targetLabel="Günlük hedef"
+      />
+    );
+  };
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -82,89 +121,114 @@ export const DashboardPage: React.FC = () => {
             <Sparkles size={12} />
             Hoş Geldiniz
           </span>
-          <h1 className="text-2xl md:text-3xl font-bold">Merhaba, {user?.displayName}!</h1>
+          <h1 className="text-2xl md:text-3xl font-bold">
+            Merhaba, {user?.displayName}!
+          </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Günlük, haftalık ve aylık özetleriniz burada. Veri girilmeyen günler grafikte 0 olarak gösterilir.
+            Üstteki bir kartı seçerek o kategorinin trend grafiğini görüntüleyin.
+            Veri girilmeyen günler grafikte 0 olarak gösterilir.
           </p>
         </div>
       </div>
 
-      {loading ? (
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <SegmentedControl
+          options={DASHBOARD_PERIODS}
+          value={period}
+          onChange={handlePeriodChange}
+          ariaLabel="Dönem seçimi"
+        />
+        {overview && (
+          <p className="text-xs text-slate-500">
+            {formatDate(overview.rangeStart)} – {formatDate(overview.rangeEnd)}
+            <span className="ml-2 text-slate-400">
+              ({overview.daysElapsed} gün)
+            </span>
+          </p>
+        )}
+      </div>
+
+      {loading && !overview ? (
         <p className="text-center text-slate-400 py-8">Yükleniyor...</p>
-      ) : (
+      ) : overview && cards ? (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="p-5 rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5 flex items-center gap-4 hover-lift"
-              >
-                <div className={cn("p-3 rounded-xl", stat.color)}>
-                  <stat.icon size={24} />
-                </div>
-                <div>
-                  <p className="text-xs uppercase font-semibold text-slate-400">{stat.label}</p>
-                  <p className="text-lg font-bold">{stat.value}</p>
-                  {"sub" in stat && stat.sub && (
-                    <span className="text-[10px] text-emerald-500">{stat.sub}</span>
-                  )}
-                </div>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+            <SummaryCard
+              meta={CARD_META.sport}
+              icon={CARD_ICONS.sport}
+              isActive={activeCard === "sport"}
+              onClick={() => setActiveCard("sport")}
+              primaryMinutes={cards.sport.totalMinutes}
+              primaryLabel={primaryLabels.total}
+              targetMinutes={cards.sport.targetMinutes}
+              showTarget={showTargets}
+              breakdown={cards.sport.breakdown}
+            />
+            <SummaryCard
+              meta={CARD_META.sleep}
+              icon={CARD_ICONS.sleep}
+              isActive={activeCard === "sleep"}
+              onClick={() => setActiveCard("sleep")}
+              primaryMinutes={cards.sleep.averageMinutesPerDay}
+              primaryLabel={primaryLabels.averagePerDay}
+              targetMinutes={cards.sleep.targetAverageMinutesPerDay}
+              showTarget={showTargets}
+            />
+            <SummaryCard
+              meta={CARD_META.deepwork}
+              icon={CARD_ICONS.deepwork}
+              isActive={activeCard === "deepwork"}
+              onClick={() => setActiveCard("deepwork")}
+              primaryMinutes={cards.deepWork.averageMinutesPerDay}
+              primaryLabel={primaryLabels.averagePerDay}
+              targetMinutes={cards.deepWork.targetAverageMinutesPerDay}
+              showTarget={showTargets}
+              breakdown={cards.deepWork.breakdown}
+            />
+            <SummaryCard
+              meta={CARD_META.meditation}
+              icon={CARD_ICONS.meditation}
+              isActive={activeCard === "meditation"}
+              onClick={() => setActiveCard("meditation")}
+              primaryMinutes={cards.meditation.averageMinutesPerDay}
+              primaryLabel={primaryLabels.averagePerDay}
+              targetMinutes={cards.meditation.targetAverageMinutesPerDay}
+              showTarget={showTargets}
+            />
           </div>
 
-          <div className="flex gap-2 flex-wrap">
-            {(["weekly", "monthly"] as const).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-sm font-medium border transition-all",
-                  period === p
-                    ? "bg-primary text-white border-primary"
-                    : "border-slate-200 dark:border-white/10"
-                )}
-              >
-                {p === "weekly" ? "Haftalık" : "Aylık"}
-              </button>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {analytics?.charts.map((chart) => (
-              <div
-                key={chart.title}
-                className="p-4 rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5"
-              >
-                <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                  <Flower2 size={16} className="text-primary" />
-                  {chart.title}
+          <div className="p-4 md:p-6 rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  {React.createElement(CARD_ICONS[activeCard], {
+                    size: 16,
+                    style: { color: CARD_META[activeCard].primaryColor },
+                  })}
+                  {CARD_META[activeCard].label} Trendi
                 </h3>
-                <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chart.points}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                      <XAxis
-                        dataKey="label"
-                        tick={{ fontSize: 10 }}
-                        tickFormatter={(v) => formatChartDate(String(v))}
-                      />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip
-                        labelFormatter={(v) => {
-                          const s = String(v);
-                          return /^\d{2}\.\d{2}\.\d{4}$/.test(s) ? s : formatChartDate(s);
-                        }}
-                      />
-                      <Bar dataKey="value" fill="#5f7a61" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Kırılım:{" "}
+                  <span className="font-medium text-slate-500">
+                    {BUCKET_LABELS[overview.bucket]}
+                  </span>
+                </p>
               </div>
-            ))}
+              {bucketOptions && (
+                <SegmentedControl
+                  size="sm"
+                  options={bucketOptions}
+                  value={overview.bucket}
+                  onChange={(id) => setBucket(id)}
+                  ariaLabel="Kırılım seçimi"
+                />
+              )}
+            </div>
+
+            {renderActiveChart()}
           </div>
         </>
-      )}
+      ) : null}
     </div>
   );
 };

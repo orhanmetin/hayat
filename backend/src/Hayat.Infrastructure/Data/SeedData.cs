@@ -30,10 +30,19 @@ namespace Hayat.Infrastructure.Data
                 {
                     Username = "admin",
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
-                    DisplayName = "Yönetici (Admin)",
+                    DisplayName = "Orhan",
                     CreatedAt = DateTime.UtcNow
                 });
                 context.SaveChanges();
+            }
+            else
+            {
+                var admin = context.Users.FirstOrDefault(u => u.Username == "admin");
+                if (admin != null && admin.DisplayName != "Orhan")
+                {
+                    admin.DisplayName = "Orhan";
+                    context.SaveChanges();
+                }
             }
 
             SeedLookupTypes(context);

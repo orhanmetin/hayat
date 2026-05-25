@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Hayat.Domain")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2db564a29677557809983d53f9c74f7c2a80146f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2700ea61c1a01c5fffc9e3f2e82d46dfe20ccc37")]
 [assembly: System.Reflection.AssemblyProductAttribute("Hayat.Domain")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Hayat.Domain")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
