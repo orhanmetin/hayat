@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Layers } from "lucide-react";
 import { managementApi } from "../../services/modules";
 import { TypeListPanel } from "./TypeListPanel";
+import { StravaIntegrationPanel } from "./StravaIntegrationPanel";
 import type { LookupType } from "../../types/modules";
 
 export const ActivityTypesPanel: React.FC = () => {
@@ -50,6 +51,8 @@ export const ActivityTypesPanel: React.FC = () => {
           Spor ve deep work kayıtlarında kullanılacak alt türler
         </p>
       </div>
+
+      <StravaIntegrationPanel />
 
       <div className="p-5 rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5">
         <TypeListPanel

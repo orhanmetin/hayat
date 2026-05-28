@@ -5,6 +5,25 @@ export interface LookupType {
   sortOrder: number;
 }
 
+export interface StravaConnectionStatus {
+  isConnected: boolean;
+  athleteId: number | null;
+  expiresAtUtc: string | null;
+  lastSyncAtUtc: string | null;
+}
+
+export interface StravaImportedActivity {
+  stravaActivityId: number;
+  title: string;
+  activityTypeName: string;
+}
+
+export interface StravaSyncResult {
+  importedCount: number;
+  skippedCount: number;
+  imported: StravaImportedActivity[];
+}
+
 export interface Habit {
   id: number;
   name: string;

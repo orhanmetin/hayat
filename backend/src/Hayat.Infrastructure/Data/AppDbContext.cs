@@ -17,6 +17,7 @@ namespace Hayat.Infrastructure.Data
         public DbSet<MeditationSession> MeditationSessions => Set<MeditationSession>();
         public DbSet<DeepWorkSession> DeepWorkSessions => Set<DeepWorkSession>();
         public DbSet<WeeklyGoal> WeeklyGoals => Set<WeeklyGoal>();
+        public DbSet<UserStravaConnection> UserStravaConnections => Set<UserStravaConnection>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -73,8 +74,20 @@ namespace Hayat.Infrastructure.Data
                 e.Property(x => x.DistanceKm).HasColumnType("REAL");
                 e.Property(x => x.StravaLink).HasMaxLength(500);
                 e.Property(x => x.Note).HasMaxLength(500);
+                e.HasIndex(x => new { x.UserId, x.StravaActivityId })
+                    .IsUnique()
+                    .HasFilter("StravaActivityId IS NOT NULL");
                 e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
                 e.HasOne(x => x.SportActivityType).WithMany().HasForeignKey(x => x.SportActivityTypeId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<UserStravaConnection>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.HasIndex(x => x.UserId).IsUnique();
+                e.Property(x => x.AccessToken).HasMaxLength(512).IsRequired();
+                e.Property(x => x.RefreshToken).HasMaxLength(512).IsRequired();
+                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<MeditationSession>(e =>

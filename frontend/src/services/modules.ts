@@ -11,6 +11,8 @@ import type {
   MeditationSession,
   SleepLog,
   SportActivity,
+  StravaConnectionStatus,
+  StravaSyncResult,
   WeekInfo,
   WeeklyGoal,
 } from "../types/modules";
@@ -32,6 +34,16 @@ export const habitsApi = {
   setCheckIn: (id: number, date: string, completed: boolean) =>
     apiClient.put<Habit>(`/habits/${id}/check-in`, { date, completed }),
   remove: (id: number) => apiClient.delete(`/habits/${id}`),
+};
+
+export const stravaApi = {
+  getConnectUrl: () => apiClient.get<{ url: string }>("/strava/connect-url"),
+  getStatus: () => apiClient.get<StravaConnectionStatus>("/strava/status"),
+  disconnect: () => apiClient.delete("/strava/disconnect"),
+  syncActivities: () =>
+    apiClient.post<StravaSyncResult>("/sports/sync-strava", null, {
+      timeout: 120_000,
+    }),
 };
 
 export const managementApi = {

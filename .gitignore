@@ -1,0 +1,10 @@
+# Strava / local secrets
+backend/src/Hayat.Api/appsettings.Development.json
+
+# SQLite
+backend/src/Hayat.Api/hayat.db
+backend/src/Hayat.Api/hayat.db-*
+
+# .NET build output
+**/bin/
+**/obj/

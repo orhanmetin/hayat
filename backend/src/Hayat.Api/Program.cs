@@ -8,8 +8,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Hayat.Application.Interfaces;
+using Hayat.Application.Options;
+using Hayat.Infrastructure.BackgroundServices;
 using Hayat.Infrastructure.Data;
 using Hayat.Infrastructure.Services;
+using Hayat.Infrastructure.Strava;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,6 +60,13 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+
+builder.Services.Configure<StravaOptions>(builder.Configuration.GetSection(StravaOptions.SectionName));
+builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<StravaApiClient>();
+builder.Services.AddScoped<IStravaOAuthService, StravaOAuthService>();
+builder.Services.AddScoped<IStravaSyncService, StravaSyncService>();
+builder.Services.AddHostedService<StravaBackgroundSyncService>();
 
 // DI services
 builder.Services.AddScoped<ITokenService, TokenService>();

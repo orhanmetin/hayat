@@ -208,6 +208,9 @@ namespace Hayat.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<long?>("StravaActivityId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("StravaLink")
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
@@ -223,6 +226,10 @@ namespace Hayat.Infrastructure.Migrations
                     b.HasIndex("SportActivityTypeId");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "StravaActivityId")
+                        .IsUnique()
+                        .HasFilter("StravaActivityId IS NOT NULL");
 
                     b.ToTable("SportActivities");
                 });
@@ -250,6 +257,45 @@ namespace Hayat.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("SportActivityTypes");
+                });
+
+            modelBuilder.Entity("Hayat.Domain.Entities.UserStravaConnection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AccessToken")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("AthleteId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("ConnectedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastSyncAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RefreshToken")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("UserStravaConnections");
                 });
 
             modelBuilder.Entity("Hayat.Domain.Entities.User", b =>
@@ -400,6 +446,17 @@ namespace Hayat.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("SportActivityType");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Hayat.Domain.Entities.UserStravaConnection", b =>
+                {
+                    b.HasOne("Hayat.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });

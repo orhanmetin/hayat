@@ -12,6 +12,7 @@ namespace Hayat.Domain.Entities
         public DateOnly Date { get; set; }
         public int DurationMinutes { get; set; }
         public decimal? DistanceKm { get; set; }
+        public long? StravaActivityId { get; set; }
         public string? StravaLink { get; set; }
         public string? Note { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
