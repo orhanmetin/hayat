@@ -43,10 +43,15 @@ builder.Services.AddCors(options =>
     });
 });
 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Data Source=/data/hayat.db";
+
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.UseSqlite(
+        connectionString,
+        sqlite => sqlite.MigrationsAssembly("Hayat.Infrastructure"));
 });
 
 // Configure JWT Authentication

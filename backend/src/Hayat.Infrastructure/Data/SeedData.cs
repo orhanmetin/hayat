@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Hayat.Domain.Entities;
 
@@ -10,19 +10,10 @@ namespace Hayat.Infrastructure.Data
     {
         public static void Initialize(IServiceProvider serviceProvider)
         {
-            using var context = new AppDbContext(
-                serviceProvider.GetRequiredService<DbContextOptions<AppDbContext>>());
+            var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+            using var context = DatabaseBootstrap.CreateContext(configuration);
 
-            try
-            {
-                context.Database.ExecuteSqlRaw("DELETE FROM \"__EFMigrationsLock\"");
-            }
-            catch
-            {
-                // lock tablosu henüz yoksa yoksay
-            }
-
-            context.Database.Migrate();
+            DatabaseBootstrap.ApplyMigrations(context);
 
             if (!context.Users.Any())
             {

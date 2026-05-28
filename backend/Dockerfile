@@ -15,7 +15,8 @@ WORKDIR /app
 RUN mkdir -p /data
 COPY --from=build /app/publish .
 COPY docker-entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+ARG APP_VERSION=unknown
+RUN chmod +x /entrypoint.sh && echo "$APP_VERSION" > /app/APP_VERSION.txt
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 VOLUME ["/data"]
