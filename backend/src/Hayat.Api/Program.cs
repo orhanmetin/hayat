@@ -44,8 +44,10 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
-        .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
+{
+    options.ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+});
 
 // Configure JWT Authentication
 var secretKey = builder.Configuration["Jwt:SecretKey"] ?? "HayatAppSuperSecretKeyForDevelopment2026!!";
@@ -113,8 +115,7 @@ using (var scope = app.Services.CreateScope())
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "Database migration/seeding sirasinda bir hata olustu.");
-        if (args.Contains("--seed-dashboard-test") || app.Environment.IsProduction())
-            throw;
+        throw;
     }
 }
 

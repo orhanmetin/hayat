@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Hayat.Domain.Entities;
 
 namespace Hayat.Infrastructure.Data
@@ -6,6 +7,12 @@ namespace Hayat.Infrastructure.Data
     public class AppDbContext : DbContext
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            optionsBuilder.ConfigureWarnings(w =>
+                w.Ignore(RelationalEventId.PendingModelChangesWarning));
+        }
 
         public DbSet<User> Users => Set<User>();
         public DbSet<SportActivityType> SportActivityTypes => Set<SportActivityType>();
