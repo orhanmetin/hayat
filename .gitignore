@@ -1,3 +1,6 @@
+# Deployment secrets
+.env
+
 # Strava / local secrets
 backend/src/Hayat.Api/appsettings.Development.json
 
