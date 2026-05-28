@@ -10,8 +10,6 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Hayat.Infrastructure.Migrations
 {
-    [DbContext(typeof(AppDbContext))]
-    [Migration("20260524132233_AddLifestyleModules")]
     partial class AddLifestyleModules
     {
         /// <inheritdoc />
