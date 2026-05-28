@@ -14,7 +14,10 @@ FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 RUN mkdir -p /data
 COPY --from=build /app/publish .
+COPY docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 VOLUME ["/data"]
-ENTRYPOINT ["dotnet", "Hayat.Api.dll"]
+USER root
+ENTRYPOINT ["/entrypoint.sh"]

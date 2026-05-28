@@ -3,6 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    user: "0:0"
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production

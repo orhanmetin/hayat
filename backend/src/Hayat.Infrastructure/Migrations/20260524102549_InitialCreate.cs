@@ -1,10 +1,14 @@
 ﻿using System;
+using Hayat.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace Hayat.Infrastructure.Migrations
 {
+    [DbContext(typeof(AppDbContext))]
+    [Migration("20260524102549_InitialCreate")]
     /// <inheritdoc />
     public partial class InitialCreate : Migration
     {

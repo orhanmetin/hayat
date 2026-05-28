@@ -112,7 +112,7 @@ using (var scope = app.Services.CreateScope())
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "Database migration/seeding sirasinda bir hata olustu.");
-        if (args.Contains("--seed-dashboard-test"))
+        if (args.Contains("--seed-dashboard-test") || app.Environment.IsProduction())
             throw;
     }
 }
