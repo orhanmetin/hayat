@@ -65,7 +65,9 @@ docker compose ps
 docker compose logs -f api
 ```
 
-İlk açılışta migration + admin seed çalışır.
+İlk açılışta imajdaki `hayat.initial.db` kopyalanır (volume boşsa) veya `EnsureCreated` ile şema oluşturulur. EF `Migrate()` kullanılmaz.
+
+Logda şunu görmelisiniz: `Hayat DB bootstrap v3 (EnsureCreated only; EF Migrate disabled).`
 
 - **Giriş:** `admin` / `Admin123!` (hemen şifreyi değiştirmeniz önerilir)
 
@@ -84,8 +86,13 @@ Tarayıcı: `http://167.233.16.12`
 ```bash
 cd /opt/hayat
 git pull
-docker compose build
+docker compose down
+docker volume rm hayat_hayat-db   # bozuk/eski DB'yi temizler (veri gider)
+docker compose build --no-cache
 docker compose up -d
+docker compose logs api | grep -E "bootstrap|BOOTSTRAP_VERSION|Seeding"
+docker compose exec api cat /app/BOOTSTRAP_VERSION.txt
+# Beklenen: v3-ensure-created-no-migrate
 ```
 
 ## 7. HTTPS (önerilir)
@@ -109,6 +116,8 @@ Strava panelindeki callback domain’i de güncelleyin.
 
 | Belirti | Çözüm |
 |---------|--------|
+| `PendingModelChangesWarning` / `DELETE FROM __EFMigrationsLock` | **Eski Docker imajı** — `git pull` + `docker compose build --no-cache` + volume sil (aşağı) |
+| Logda `bootstrap v3` yok | Aynı: yeniden build; `docker compose exec api cat /app/APP_VERSION.txt` |
 | `no such table: Users` | Bkz. **Veritabanı** bölümü |
 | 502 / API yok | `docker compose logs api` |
 | CORS hatası | `PUBLIC_URL` tarayıcıdaki origin ile aynı mı? |

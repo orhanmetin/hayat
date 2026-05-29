@@ -125,7 +125,7 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Database migration/seeding sirasinda bir hata olustu.");
+        logger.LogError(ex, "Database bootstrap/seeding sirasinda bir hata olustu.");
         throw;
     }
 }

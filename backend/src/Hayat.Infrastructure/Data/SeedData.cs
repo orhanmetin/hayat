@@ -18,6 +18,9 @@ namespace Hayat.Infrastructure.Data
             using var context = DatabaseBootstrap.CreateContext(configuration);
 
             DatabaseBootstrap.EnsureSchema(context, configuration, logger);
+            logger?.LogInformation(
+                "Hayat DB {Version} (EnsureCreated only; EF Migrate disabled).",
+                BootstrapVersion.Id);
 
             if (!context.Users.Any())
             {

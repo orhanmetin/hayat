@@ -7,6 +7,7 @@ backend/src/Hayat.Api/appsettings.Development.json
 # SQLite
 backend/src/Hayat.Api/hayat.db
 backend/src/Hayat.Api/hayat.db-*
+backend/src/Hayat.Api/test-migrate.db*
 !deploy/hayat.initial.db
 
 # .NET build output

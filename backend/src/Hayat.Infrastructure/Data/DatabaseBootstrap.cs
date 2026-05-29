@@ -34,7 +34,6 @@ namespace Hayat.Infrastructure.Data
             if (UsersTableExists(context))
             {
                 logger?.LogInformation("Database schema OK (Users table found).");
-                TryApplyMigrationsIfEnabled(context, configuration, logger);
                 return;
             }
 
@@ -56,25 +55,6 @@ namespace Hayat.Infrastructure.Data
                 throw new InvalidOperationException("Database schema could not be created.");
 
             logger?.LogInformation("Schema recreated successfully.");
-        }
-
-        private static void TryApplyMigrationsIfEnabled(
-            AppDbContext context,
-            IConfiguration configuration,
-            ILogger? logger)
-        {
-            if (!configuration.GetValue("Database:UseMigrations", false))
-                return;
-
-            try
-            {
-                context.Database.Migrate();
-                logger?.LogInformation("EF migrations applied.");
-            }
-            catch (Exception ex)
-            {
-                logger?.LogWarning(ex, "EF migrations failed; using existing schema.");
-            }
         }
 
         private static bool UsersTableExists(AppDbContext context)
