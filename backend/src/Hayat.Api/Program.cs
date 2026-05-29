@@ -110,6 +110,12 @@ using (var scope = app.Services.CreateScope())
 
         SeedData.Initialize(services);
 
+        if (args.Contains("--init-db-only"))
+        {
+            Console.WriteLine("Database initialized.");
+            return;
+        }
+
         if (args.Contains("--seed-dashboard-test"))
         {
             Console.WriteLine("Dashboard test verisi olusturuldu (son 90 gun).");

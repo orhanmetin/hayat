@@ -24,6 +24,8 @@ services:
       Strava__BackgroundSyncHourUtc: "2"
     volumes:
       - hayat-db:/data
+      # Optional: use a pre-built DB from deploy/ (see deploy/HETZNER.md)
+      # - ./deploy/hayat.initial.db:/data/hayat.db:ro
     networks:
       - hayat
 

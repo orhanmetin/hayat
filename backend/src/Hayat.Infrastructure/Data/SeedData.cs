@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Hayat.Domain.Entities;
 
 namespace Hayat.Infrastructure.Data
@@ -11,9 +12,12 @@ namespace Hayat.Infrastructure.Data
         public static void Initialize(IServiceProvider serviceProvider)
         {
             var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+            var logger = serviceProvider.GetService<ILoggerFactory>()?
+                .CreateLogger("Hayat.DatabaseBootstrap");
+
             using var context = DatabaseBootstrap.CreateContext(configuration);
 
-            DatabaseBootstrap.ApplyMigrations(context);
+            DatabaseBootstrap.EnsureSchema(context, configuration, logger);
 
             if (!context.Users.Any())
             {
