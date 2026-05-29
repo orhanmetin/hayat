@@ -109,14 +109,44 @@ Strava panelindeki callback domain’i de güncelleyin.
 
 | Belirti | Çözüm |
 |---------|--------|
+| `no such table: Users` | Bkz. **Veritabanı** bölümü |
 | 502 / API yok | `docker compose logs api` |
 | CORS hatası | `PUBLIC_URL` tarayıcıdaki origin ile aynı mı? |
 | Strava bağlanmıyor | Callback URL ve `STRAVA_*` env |
 | Veri kaybı | Volume: `docker volume inspect hayat_hayat-db` |
 
-## Neon PostgreSQL
+## Veritabanı (SQLite)
 
-Şu an Docker imajı **SQLite** kullanır (mevcut migration’lar). Neon’a geçiş için repoda Npgsql + Postgres migration eklenmesi gerekir; connection string’i `.env` ile vermek yeterli olmaz.
+Production artık migration yerine **EnsureCreated** kullanır.
+Repoda hazır dosya: `deploy/hayat.initial.db` (admin + seed).
+
+### Yöntem A — Otomatik
+
+```bash
+cd /opt/hayat && git pull
+docker compose down && docker volume rm hayat_hayat-db
+docker compose build api --no-cache && docker compose up -d
+docker compose logs api | grep -i schema
+```
+
+### Yöntem B — Hazır DB mount
+
+`docker-compose.yml` → `api` volumes:
+
+```yaml
+    volumes:
+      - ./deploy/hayat.initial.db:/data/hayat.db:ro
+```
+
+### Yöntem C — SCP ile upload
+
+```bash
+# PC'den: scp deploy/hayat.initial.db root@SUNUCU:/opt/hayat/deploy/
+docker compose down && docker volume rm hayat_hayat-db
+# sonra Yöntem B mount ile up -d
+```
+
+Giriş: `admin` / `Admin123!`
 
 ---
 
