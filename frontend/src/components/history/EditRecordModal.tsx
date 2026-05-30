@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { healthApi, deepWorkApi, managementApi } from "../../services/modules";
 import { DurationMinutesInput } from "../ui/DurationMinutesInput";
@@ -99,6 +100,15 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
     }
   }, [payload]);
 
+  useEffect(() => {
+    if (!payload) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [payload]);
+
   if (!payload) return null;
 
   const titleMap: Record<RecordKind, string> = {
@@ -167,23 +177,39 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
+  const modal = (
+    <div
+      className="fixed inset-0 z-[100] flex items-end md:items-center justify-center md:p-4"
+      role="presentation"
+    >
       <button
         type="button"
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
         aria-label="Kapat"
       />
-      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-t-3xl md:rounded-2xl bg-white dark:bg-bg-dark border border-slate-200 dark:border-white/10 shadow-xl">
-        <div className="sticky top-0 flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10 bg-white dark:bg-bg-dark">
-          <h2 className="font-semibold">{titleMap[payload.kind]}</h2>
-          <button type="button" onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-record-title"
+        className="relative z-10 flex w-full max-w-lg flex-col max-h-[min(92dvh,calc(100dvh-5rem))] md:max-h-[90dvh] rounded-t-3xl md:rounded-2xl bg-white dark:bg-bg-dark border border-slate-200 dark:border-white/10 shadow-xl"
+      >
+        <div className="shrink-0 flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10">
+          <h2 id="edit-record-title" className="font-semibold pr-2">
+            {titleMap[payload.kind]}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 shrink-0"
+            aria-label="Kapat"
+          >
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y p-4 space-y-4 [-webkit-overflow-scrolling:touch]">
           {payload.kind === "sleep" && (
             <>
               <p className="text-xs text-slate-500">
@@ -312,17 +338,22 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
             </>
           )}
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          </div>
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full py-3 rounded-xl bg-primary text-white font-semibold disabled:opacity-60"
-          >
-            {saving ? "Kaydediliyor..." : "Güncelle"}
-          </button>
+          <div className="shrink-0 border-t border-slate-200 dark:border-white/10 bg-white dark:bg-bg-dark p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-4 space-y-3">
+            {error && <p className="text-sm text-red-500">{error}</p>}
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full py-3.5 rounded-xl bg-primary text-white font-semibold disabled:opacity-60"
+            >
+              {saving ? "Kaydediliyor..." : "Güncelle"}
+            </button>
+          </div>
         </form>
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 };
