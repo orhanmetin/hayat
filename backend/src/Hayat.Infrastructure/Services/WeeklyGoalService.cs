@@ -18,7 +18,7 @@ namespace Hayat.Infrastructure.Services
 
         public Task<WeekInfoDto> GetCurrentWeekAsync()
         {
-            var (year, week) = WeekHelper.GetIsoWeek(DateOnly.FromDateTime(DateTime.UtcNow));
+            var (year, week) = WeekHelper.GetIsoWeek(AppTime.Today);
             var (start, end) = WeekHelper.GetWeekRange(year, week);
             return Task.FromResult(new WeekInfoDto(year, week, start, end));
         }

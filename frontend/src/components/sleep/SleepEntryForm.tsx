@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { healthApi } from "../../services/modules";
 import { TurkishDateTimeInput } from "../ui/TurkishDateTimeInput";
-import { formatDateTime } from "../../lib/format";
+import { formatDateTime, parseApiDateTime } from "../../lib/format";
 import type { SleepLog } from "../../types/modules";
 import { cn } from "../../lib/utils";
 
@@ -54,7 +54,7 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({
 
   useEffect(() => {
     if (openSleep) {
-      setWakeDateTime(defaultWakeFromBed(new Date(openSleep.bedTime)));
+      setWakeDateTime(defaultWakeFromBed(parseApiDateTime(openSleep.bedTime)));
       setWakeTimeTouched(false);
     }
   }, [openSleep]);
@@ -129,7 +129,7 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({
       onError("Tamamlanacak yatış kaydı yok.");
       return;
     }
-    if (wakeDateTime <= new Date(openSleep.bedTime)) {
+    if (wakeDateTime <= parseApiDateTime(openSleep.bedTime)) {
       onError("Kalkış zamanı yatıştan sonra olmalıdır.");
       return;
     }

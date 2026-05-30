@@ -24,7 +24,7 @@ namespace Hayat.Infrastructure.Services
 
         public async Task<DashboardSummaryDto> GetSummaryAsync(int userId)
         {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var today = AppTime.Today;
             var yesterday = today.AddDays(-1);
 
             var habits = await _db.Habits.AsNoTracking()
@@ -35,15 +35,22 @@ namespace Hayat.Infrastructure.Services
             var completedToday = habits.Count(h => h.CheckIns.Any(c => c.Date == today));
             var bestStreak = habits.Count > 0 ? habits.Max(h => h.RecordStreak) : 0;
 
+            var todayStart = AppTime.StartOfLocalDayUtc(today);
+            var todayEnd = AppTime.EndOfLocalDayUtc(today);
+            var yesterdayStart = AppTime.StartOfLocalDayUtc(yesterday);
+            var yesterdayEnd = AppTime.EndOfLocalDayUtc(yesterday);
+
             var lastNightSleep = await _db.SleepLogs.AsNoTracking()
-                .Where(s => s.UserId == userId && s.WakeTime != null && DateOnly.FromDateTime(s.WakeTime!.Value) == today)
+                .Where(s => s.UserId == userId && s.WakeTime != null
+                    && s.WakeTime >= todayStart && s.WakeTime <= todayEnd)
                 .OrderByDescending(s => s.WakeTime)
                 .FirstOrDefaultAsync();
 
             if (lastNightSleep == null)
             {
                 lastNightSleep = await _db.SleepLogs.AsNoTracking()
-                    .Where(s => s.UserId == userId && s.WakeTime != null && DateOnly.FromDateTime(s.WakeTime!.Value) == yesterday)
+                    .Where(s => s.UserId == userId && s.WakeTime != null
+                        && s.WakeTime >= yesterdayStart && s.WakeTime <= yesterdayEnd)
                     .OrderByDescending(s => s.WakeTime)
                     .FirstOrDefaultAsync();
             }
@@ -86,7 +93,7 @@ namespace Hayat.Infrastructure.Services
 
         public async Task<DashboardOverviewDto> GetOverviewAsync(int userId, string period, string? bucket)
         {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var today = AppTime.Today;
 
             var normalizedPeriod = (period ?? string.Empty).ToLowerInvariant() switch
             {
@@ -118,16 +125,19 @@ namespace Hayat.Infrastructure.Services
             var daysElapsed = today.DayNumber - rangeStart.DayNumber + 1;
 
             // ---- Raw queries ----
-            var sleepRows = await _db.SleepLogs.AsNoTracking()
-                .Where(s => s.UserId == userId && s.WakeTime != null
-                    && DateOnly.FromDateTime(s.WakeTime!.Value) >= rangeStart
-                    && DateOnly.FromDateTime(s.WakeTime!.Value) <= today)
+            var sleepRowsRaw = await _db.SleepLogs.AsNoTracking()
+                .Where(s => s.UserId == userId && s.WakeTime != null)
+                .Select(s => new { s.WakeTime, s.BedTime })
+                .ToListAsync();
+
+            var sleepRows = sleepRowsRaw
                 .Select(s => new
                 {
-                    Date = DateOnly.FromDateTime(s.WakeTime!.Value),
+                    Date = AppTime.ToLocalDate(s.WakeTime!.Value),
                     Minutes = (int)(s.WakeTime!.Value - s.BedTime).TotalMinutes
                 })
-                .ToListAsync();
+                .Where(s => s.Date >= rangeStart && s.Date <= today)
+                .ToList();
 
             var sportRows = await _db.SportActivities.AsNoTracking()
                 .Where(s => s.UserId == userId && s.Date >= rangeStart && s.Date <= today)

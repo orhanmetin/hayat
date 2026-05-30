@@ -53,7 +53,7 @@ namespace Hayat.Infrastructure.Services
 
         public async Task<HabitDto?> ToggleTodayAsync(int userId, int habitId)
         {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var today = AppTime.Today;
             var hasToday = await _db.HabitCheckIns.AnyAsync(c => c.HabitId == habitId && c.Date == today);
             return await SetCheckInAsync(userId, habitId, new SetHabitCheckInRequest(today, !hasToday));
         }
@@ -96,7 +96,7 @@ namespace Hayat.Infrastructure.Services
 
         private static HabitDto MapDto(Habit habit)
         {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var today = AppTime.Today;
             var dates = habit.CheckIns.Select(c => c.Date);
             return new HabitDto(
                 habit.Id,

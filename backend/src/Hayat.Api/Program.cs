@@ -14,12 +14,17 @@ using Hayat.Application.Options;
 using Hayat.Infrastructure.BackgroundServices;
 using Hayat.Infrastructure.Data;
 using Hayat.Infrastructure.Services;
+using Hayat.Api.Json;
 using Hayat.Infrastructure.Strava;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
+    });
 
 var corsOrigins = builder.Configuration["Cors:AllowedOrigins"]?
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)

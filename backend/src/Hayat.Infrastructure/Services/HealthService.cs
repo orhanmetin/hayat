@@ -6,7 +6,9 @@ using Microsoft.EntityFrameworkCore;
 using Hayat.Application.DTOs;
 using Hayat.Application.Interfaces;
 using Hayat.Domain.Entities;
+using Hayat.Application.Common;
 using Hayat.Infrastructure.Data;
+using Hayat.Infrastructure;
 
 namespace Hayat.Infrastructure.Services
 {
@@ -20,9 +22,16 @@ namespace Hayat.Infrastructure.Services
         {
             var query = _db.SleepLogs.AsNoTracking().Where(s => s.UserId == userId);
             if (from.HasValue)
-                query = query.Where(s => DateOnly.FromDateTime(s.WakeTime ?? s.BedTime) >= from.Value);
+            {
+                var fromUtc = AppTime.StartOfLocalDayUtc(from.Value);
+                query = query.Where(s => (s.WakeTime ?? s.BedTime) >= fromUtc);
+            }
+
             if (to.HasValue)
-                query = query.Where(s => DateOnly.FromDateTime(s.WakeTime ?? s.BedTime) <= to.Value);
+            {
+                var toUtc = AppTime.EndOfLocalDayUtc(to.Value);
+                query = query.Where(s => (s.WakeTime ?? s.BedTime) <= toUtc);
+            }
 
             var logs = await query
                 .OrderByDescending(s => s.WakeTime ?? s.BedTime)
@@ -56,8 +65,8 @@ namespace Hayat.Infrastructure.Services
             var log = new SleepLog
             {
                 UserId = userId,
-                BedTime = request.BedTime,
-                WakeTime = request.WakeTime,
+                BedTime = DateTimeUtil.AsUtc(request.BedTime),
+                WakeTime = DateTimeUtil.AsUtc(request.WakeTime),
                 Quality = hasWake ? request.Quality!.Value : 0,
                 Note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim()
             };
@@ -74,7 +83,7 @@ namespace Hayat.Infrastructure.Services
             if (log == null || log.WakeTime != null) return null;
             if (request.WakeTime <= log.BedTime) return null;
 
-            log.WakeTime = request.WakeTime;
+            log.WakeTime = DateTimeUtil.AsUtc(request.WakeTime);
             log.Quality = request.Quality;
             if (!string.IsNullOrWhiteSpace(request.Note))
             {
@@ -92,8 +101,8 @@ namespace Hayat.Infrastructure.Services
             var log = await _db.SleepLogs.FirstOrDefaultAsync(s => s.Id == id && s.UserId == userId);
             if (log == null) return null;
 
-            log.BedTime = request.BedTime;
-            log.WakeTime = request.WakeTime;
+            log.BedTime = DateTimeUtil.AsUtc(request.BedTime);
+            log.WakeTime = DateTimeUtil.AsUtc(request.WakeTime);
             if (request.WakeTime.HasValue)
             {
                 if (request.WakeTime.Value <= request.BedTime) return null;
@@ -266,14 +275,20 @@ namespace Hayat.Infrastructure.Services
             return true;
         }
 
-        private static SleepLogDto MapSleep(SleepLog log) => new(
-            log.Id,
-            log.BedTime,
-            log.WakeTime,
-            log.DurationMinutes,
-            log.Quality,
-            log.Note,
-            DateOnly.FromDateTime(log.WakeTime ?? log.BedTime),
-            log.IsComplete);
+        private static SleepLogDto MapSleep(SleepLog log)
+        {
+            var bed = DateTimeUtil.AsUtc(log.BedTime);
+            var wake = DateTimeUtil.AsUtc(log.WakeTime);
+            var listDate = AppTime.ToLocalDate(wake ?? bed);
+            return new(
+                log.Id,
+                bed,
+                wake,
+                log.DurationMinutes,
+                log.Quality,
+                log.Note,
+                listDate,
+                log.IsComplete);
+        }
     }
 }

@@ -26,9 +26,20 @@ export function formatDate(value: string | Date): string {
   return dateFormatter.format(d);
 }
 
+/**
+ * API / SQLite timestamps are UTC instants. Values without "Z" must not be parsed as local wall-clock.
+ */
+export function parseApiDateTime(value: string): Date {
+  const trimmed = value.trim();
+  if (trimmed.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(trimmed)) {
+    return new Date(trimmed);
+  }
+  return new Date(`${trimmed}Z`);
+}
+
 /** Gün.Ay.Yıl Saat:Dakika */
 export function formatDateTime(value: string | Date): string {
-  const d = typeof value === "string" ? new Date(value) : value;
+  const d = typeof value === "string" ? parseApiDateTime(value) : value;
   if (Number.isNaN(d.getTime())) return "—";
   return dateTimeFormatter.format(d);
 }

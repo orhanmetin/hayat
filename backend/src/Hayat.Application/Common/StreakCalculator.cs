@@ -11,7 +11,7 @@ namespace Hayat.Application.Common
             var dates = checkInDates.Distinct().ToHashSet();
             if (dates.Count == 0) return 0;
 
-            var today = asOf ?? DateOnly.FromDateTime(DateTime.UtcNow);
+            var today = asOf ?? AppTime.Today;
             var cursor = dates.Contains(today) ? today : today.AddDays(-1);
 
             if (!dates.Contains(cursor)) return 0;

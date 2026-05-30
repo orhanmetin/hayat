@@ -4,7 +4,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { Sun, Moon, Sparkles, Lock, User, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Sun, Moon, Lock, User, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { AppLogo } from "../components/ui/AppLogo";
 
 // Form Validation Schema using Zod
 const loginSchema = z.object({
@@ -70,8 +71,8 @@ export const LoginPage: React.FC = () => {
         
         {/* Logo Section */}
         <div className="flex flex-col items-center mb-6 text-center text-white">
-          <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 mb-3 shadow-inner hover-scale">
-            <Sparkles size={36} className="text-white fill-emerald-300/30" />
+          <div className="p-2 bg-white/10 rounded-2xl backdrop-blur-md border border-white/20 mb-3 shadow-inner hover-scale">
+            <AppLogo size="lg" className="h-16 w-16" />
           </div>
           <h1 className="text-4xl font-bold tracking-tight font-sans">hayat</h1>
           <p className="text-white/80 dark:text-slate-400 text-sm mt-1 max-w-xs leading-relaxed font-light">

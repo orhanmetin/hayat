@@ -5,7 +5,7 @@ import { DurationMinutesInput } from "../ui/DurationMinutesInput";
 import { parseDistanceKm, normalizeStravaUrl } from "../../lib/sport";
 import { TurkishDateInput } from "../ui/TurkishDateInput";
 import { TurkishDateTimeInput } from "../ui/TurkishDateTimeInput";
-import { formatDate } from "../../lib/format";
+import { formatDate, parseApiDateTime } from "../../lib/format";
 import type {
   DeepWorkSession,
   LookupType,
@@ -69,9 +69,9 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
     setError(null);
     if (payload.kind === "sleep") {
       const r = payload.record;
-      setBedDateTime(new Date(r.bedTime));
+      setBedDateTime(parseApiDateTime(r.bedTime));
       setHasWake(r.isComplete);
-      if (r.wakeTime) setWakeDateTime(new Date(r.wakeTime));
+      if (r.wakeTime) setWakeDateTime(parseApiDateTime(r.wakeTime));
       else setWakeDateTime(new Date());
       setQuality(r.quality > 0 ? r.quality : 4);
       setSleepNote(r.note ?? "");

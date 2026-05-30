@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Activity, MoonStar, Brain, Flower2, Sparkles } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
+import { Activity, MoonStar, Brain, Flower2 } from "lucide-react";
 import { dashboardApi } from "../services/modules";
 import { formatDate } from "../lib/format";
 import {
@@ -42,7 +41,6 @@ const PERIOD_PRIMARY_LABEL: Record<DashboardPeriod, Record<"total" | "averagePer
 };
 
 export const DashboardPage: React.FC = () => {
-  const { user } = useAuth();
   const [period, setPeriod] = useState<DashboardPeriod>("weekly");
   const [bucket, setBucket] = useState<DashboardBucket | null>(null);
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
@@ -115,22 +113,6 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in-up">
-      <div className="relative rounded-3xl p-6 md:p-8 overflow-hidden bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/10 dark:border-white/5">
-        <div className="relative z-10 space-y-2 max-w-xl">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/15 text-primary-dark dark:text-primary-light">
-            <Sparkles size={12} />
-            Hoş Geldiniz
-          </span>
-          <h1 className="text-2xl md:text-3xl font-bold">
-            Merhaba, {user?.displayName}!
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Üstteki bir kartı seçerek o kategorinin trend grafiğini görüntüleyin.
-            Veri girilmeyen günler grafikte 0 olarak gösterilir.
-          </p>
-        </div>
-      </div>
-
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <SegmentedControl
           options={DASHBOARD_PERIODS}

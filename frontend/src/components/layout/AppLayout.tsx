@@ -8,8 +8,8 @@ import {
   LogOut,
   Sun,
   Moon,
-  Sparkles,
 } from "lucide-react";
+import { AppLogo } from "../ui/AppLogo";
 import { useAuth } from "../../contexts/AuthContext";
 import { cn } from "../../lib/utils";
 
@@ -41,9 +41,7 @@ export const AppLayout: React.FC = () => {
     <div className="min-h-screen bg-bg-light dark:bg-bg-dark text-slate-800 dark:text-slate-100 flex flex-col md:flex-row transition-colors duration-300 font-sans pb-16 md:pb-0">
       <aside className="hidden md:flex md:w-64 bg-white dark:bg-black/30 border-r border-slate-200 dark:border-white/5 flex-col shrink-0">
         <div className="p-6 border-b border-slate-200 dark:border-white/5 flex items-center gap-3">
-          <div className="p-2 bg-primary/10 dark:bg-primary-light/10 text-primary dark:text-primary-light rounded-xl">
-            <Sparkles size={22} />
-          </div>
+          <AppLogo size="md" />
           <span className="text-xl font-bold tracking-tight">hayat</span>
         </div>
 
@@ -79,7 +77,7 @@ export const AppLayout: React.FC = () => {
       <main className="flex-1 flex flex-col min-w-0">
         <header className="sticky top-0 z-40 bg-white/70 dark:bg-bg-dark/70 backdrop-blur-md border-b border-slate-200 dark:border-white/5 p-4 flex items-center justify-between">
           <div className="flex items-center gap-2 md:hidden">
-            <Sparkles size={24} className="text-primary dark:text-primary-light" />
+            <AppLogo size="sm" />
             <span className="text-lg font-bold">hayat</span>
           </div>
           <h2 className="hidden md:block text-lg font-semibold text-slate-800 dark:text-emerald-300">
