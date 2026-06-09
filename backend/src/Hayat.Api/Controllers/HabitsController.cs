@@ -40,6 +40,24 @@ namespace Hayat.Api.Controllers
             return result == null ? NotFound() : Ok(result);
         }
 
+        [HttpPost("{id:int}/check-ins")]
+        public async Task<IActionResult> AddCheckIn(int id)
+        {
+            var userId = GetUserId();
+            if (userId == null) return UnauthorizedUser();
+            var result = await _service.AddCheckInAsync(userId.Value, id);
+            return result == null ? NotFound() : Ok(result);
+        }
+
+        [HttpGet("{id:int}/analytics")]
+        public async Task<IActionResult> GetAnalytics(int id, [FromQuery] string period = "weekly", [FromQuery] string? bucket = null)
+        {
+            var userId = GetUserId();
+            if (userId == null) return UnauthorizedUser();
+            var result = await _service.GetAnalyticsAsync(userId.Value, id, period, bucket);
+            return result == null ? NotFound() : Ok(result);
+        }
+
         [HttpPut("{id:int}/check-in")]
         public async Task<IActionResult> SetCheckIn(int id, [FromBody] SetHabitCheckInRequest request)
         {

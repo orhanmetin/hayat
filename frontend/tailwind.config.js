@@ -26,6 +26,7 @@ export default {
       },
       fontFamily: {
         sans: ['Outfit', 'sans-serif'],
+        quote: ['"Cormorant Garamond"', 'Georgia', 'serif'],
       },
       borderRadius: {
         lg: '1.25rem',

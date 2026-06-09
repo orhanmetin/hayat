@@ -4,9 +4,11 @@ import type {
   DashboardBucket,
   DashboardOverview,
   DashboardPeriod,
+  Anecdote,
   DashboardSummary,
   DeepWorkSession,
   Habit,
+  HabitAnalytics,
   LookupType,
   MeditationSession,
   SleepLog,
@@ -30,9 +32,12 @@ export const dashboardApi = {
 export const habitsApi = {
   getAll: () => apiClient.get<Habit[]>("/habits"),
   create: (name: string) => apiClient.post<Habit>("/habits", { name }),
+  addCheckIn: (id: number) => apiClient.post<Habit>(`/habits/${id}/check-ins`),
   toggle: (id: number) => apiClient.post<Habit>(`/habits/${id}/toggle`),
   setCheckIn: (id: number, date: string, completed: boolean) =>
     apiClient.put<Habit>(`/habits/${id}/check-in`, { date, completed }),
+  getAnalytics: (id: number, period: string, bucket?: string) =>
+    apiClient.get<HabitAnalytics>(`/habits/${id}/analytics`, { params: { period, bucket } }),
   remove: (id: number) => apiClient.delete(`/habits/${id}`),
 };
 
@@ -44,6 +49,15 @@ export const stravaApi = {
     apiClient.post<StravaSyncResult>("/sports/sync-strava", null, {
       timeout: 120_000,
     }),
+};
+
+export const anecdotesApi = {
+  getAll: () => apiClient.get<Anecdote[]>("/anecdotes"),
+  create: (data: { text: string; author?: string | null }) =>
+    apiClient.post<Anecdote>("/anecdotes", data),
+  update: (id: number, data: { text: string; author?: string | null }) =>
+    apiClient.put<Anecdote>(`/anecdotes/${id}`, data),
+  delete: (id: number) => apiClient.delete(`/anecdotes/${id}`),
 };
 
 export const managementApi = {

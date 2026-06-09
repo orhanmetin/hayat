@@ -24,6 +24,8 @@ namespace Hayat.Application.Interfaces
         Task<bool> DeleteHabitAsync(int userId, int habitId);
         Task<HabitDto?> SetCheckInAsync(int userId, int habitId, SetHabitCheckInRequest request);
         Task<HabitDto?> ToggleTodayAsync(int userId, int habitId);
+        Task<HabitDto?> AddCheckInAsync(int userId, int habitId);
+        Task<HabitAnalyticsDto?> GetAnalyticsAsync(int userId, int habitId, string period, string? bucket);
     }
 
     public interface IHealthService

@@ -8,6 +8,7 @@ import {
   CARD_META,
   type DashboardCardKey,
 } from "../config/dashboard";
+import { DashboardAnecdoteBanner } from "../components/dashboard/DashboardAnecdoteBanner";
 import { SegmentedControl } from "../components/dashboard/SegmentedControl";
 import { SummaryCard } from "../components/dashboard/SummaryCard";
 import { SimpleBarChart } from "../components/dashboard/SimpleBarChart";
@@ -113,6 +114,8 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in-up">
+      <DashboardAnecdoteBanner />
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <SegmentedControl
           options={DASHBOARD_PERIODS}

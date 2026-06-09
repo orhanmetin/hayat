@@ -1,11 +1,12 @@
 import React from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { Target, Layers } from "lucide-react";
+import { Target, Layers, BookOpen } from "lucide-react";
 import { cn } from "../../lib/utils";
 
 const sections = [
   { to: "/management/goals", label: "Hedef Yönetimi", icon: Target },
   { to: "/management/activity-types", label: "Aktivite Türleri", icon: Layers },
+  { to: "/management/anecdotes", label: "Anektodlar", icon: BookOpen },
 ] as const;
 
 export const ManagementLayout: React.FC = () => (
@@ -13,12 +14,12 @@ export const ManagementLayout: React.FC = () => (
     <div>
       <h1 className="text-2xl font-bold">Yönetim</h1>
       <p className="text-sm text-slate-500 mt-1">
-        Hedefler ve aktivite türleri ayrı bölümlerde yönetilir
+        Hedefler, aktivite türleri ve anektodlar ayrı bölümlerde yönetilir
       </p>
     </div>
 
     <nav
-      className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-100 dark:bg-white/5"
+      className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-white/5"
       aria-label="Yönetim bölümleri"
     >
       {sections.map(({ to, label, icon: Icon }) => (

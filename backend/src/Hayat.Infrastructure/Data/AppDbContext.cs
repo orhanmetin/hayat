@@ -25,6 +25,7 @@ namespace Hayat.Infrastructure.Data
         public DbSet<DeepWorkSession> DeepWorkSessions => Set<DeepWorkSession>();
         public DbSet<WeeklyGoal> WeeklyGoals => Set<WeeklyGoal>();
         public DbSet<UserStravaConnection> UserStravaConnections => Set<UserStravaConnection>();
+        public DbSet<Anecdote> Anecdotes => Set<Anecdote>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -63,7 +64,7 @@ namespace Hayat.Infrastructure.Data
             modelBuilder.Entity<HabitCheckIn>(e =>
             {
                 e.HasKey(x => x.Id);
-                e.HasIndex(x => new { x.HabitId, x.Date }).IsUnique();
+                e.HasIndex(x => new { x.HabitId, x.Date });
                 e.HasOne(x => x.Habit).WithMany(h => h.CheckIns).HasForeignKey(x => x.HabitId).OnDelete(DeleteBehavior.Cascade);
             });
 
@@ -115,6 +116,14 @@ namespace Hayat.Infrastructure.Data
             {
                 e.HasKey(x => x.Id);
                 e.HasIndex(x => new { x.UserId, x.Year, x.WeekNumber }).IsUnique();
+                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<Anecdote>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Text).HasMaxLength(2000).IsRequired();
+                e.Property(x => x.Author).HasMaxLength(120);
                 e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
         }

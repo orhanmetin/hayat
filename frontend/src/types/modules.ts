@@ -1,3 +1,11 @@
+export interface Anecdote {
+  id: number;
+  text: string;
+  author: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface LookupType {
   id: number;
   name: string;
@@ -28,9 +36,28 @@ export interface Habit {
   id: number;
   name: string;
   completedToday: boolean;
+  todayCount: number;
   currentStreak: number;
   recordStreak: number;
   createdAt: string;
+}
+
+export interface CountBucketValue {
+  key: string;
+  label: string;
+  count: number;
+}
+
+export type HabitTrendView = "daily" | "weekly" | "monthly";
+
+export interface HabitAnalytics {
+  period: string;
+  bucket: string;
+  rangeStart: string;
+  rangeEnd: string;
+  todayCount: number;
+  periodTotal: number;
+  series: CountBucketValue[];
 }
 
 export interface DashboardSummary {

@@ -13,12 +13,25 @@ namespace Hayat.Application.DTOs
         int Id,
         string Name,
         bool CompletedToday,
+        int TodayCount,
         int CurrentStreak,
         int RecordStreak,
         DateTime CreatedAt
     );
     public record CreateHabitRequest(string Name);
     public record SetHabitCheckInRequest(DateOnly Date, bool Completed);
+
+    public record CountBucketValueDto(string Key, string Label, int Count);
+
+    public record HabitAnalyticsDto(
+        string Period,
+        string Bucket,
+        DateOnly RangeStart,
+        DateOnly RangeEnd,
+        int TodayCount,
+        int PeriodTotal,
+        IReadOnlyList<CountBucketValueDto> Series
+    );
 
     // --- Sleep ---
     public record SleepLogDto(

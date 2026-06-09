@@ -10,6 +10,7 @@ import { HabitsPage } from "./pages/HabitsPage";
 import { ManagementLayout } from "./pages/management/ManagementLayout";
 import { WeeklyGoalsPanel } from "./components/management/WeeklyGoalsPanel";
 import { ActivityTypesPanel } from "./components/management/ActivityTypesPanel";
+import { AnecdotesPanel } from "./components/management/AnecdotesPanel";
 
 const App: React.FC = () => {
   return (
@@ -28,6 +29,7 @@ const App: React.FC = () => {
                 <Route index element={<Navigate to="goals" replace />} />
                 <Route path="goals" element={<WeeklyGoalsPanel />} />
                 <Route path="activity-types" element={<ActivityTypesPanel />} />
+                <Route path="anecdotes" element={<AnecdotesPanel />} />
               </Route>
             </Route>
           </Route>

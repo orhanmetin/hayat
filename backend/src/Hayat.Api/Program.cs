@@ -101,6 +101,7 @@ builder.Services.AddScoped<IHealthService, HealthService>();
 builder.Services.AddScoped<IDeepWorkService, DeepWorkService>();
 builder.Services.AddScoped<IWeeklyGoalService, WeeklyGoalService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IAnecdoteService, AnecdoteService>();
 
 var app = builder.Build();
 
