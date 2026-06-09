@@ -206,10 +206,17 @@ namespace Hayat.Infrastructure.Services
             // ---- Buckets ----
             var bucketDefs = BuildBuckets(rangeStart, today, normalizedPeriod, normalizedBucket);
 
-            var sleepSeries = BuildSimpleSeries(bucketDefs, sleepRows.Select(r => (r.Date, r.Minutes)));
-            var meditationSeries = BuildSimpleSeries(bucketDefs, meditationRows.Select(r => (r.Date, r.DurationMinutes)));
-            var sportStacked = BuildStackedSeries(bucketDefs, sportRows.Select(r => (r.Date, r.TypeName, r.DurationMinutes)));
-            var deepWorkStacked = BuildStackedSeries(bucketDefs, deepWorkRows.Select(r => (r.Date, r.TypeName, r.DurationMinutes)));
+            // Sleep / meditation / deep work charts use daily averages for weekly & monthly buckets.
+            var chartUsesDailyAverage = normalizedBucket != "daily";
+
+            var sleepSeries = BuildSimpleSeries(
+                bucketDefs, sleepRows.Select(r => (r.Date, r.Minutes)), chartUsesDailyAverage);
+            var meditationSeries = BuildSimpleSeries(
+                bucketDefs, meditationRows.Select(r => (r.Date, r.DurationMinutes)), chartUsesDailyAverage);
+            var sportStacked = BuildStackedSeries(
+                bucketDefs, sportRows.Select(r => (r.Date, r.TypeName, r.DurationMinutes)));
+            var deepWorkStacked = BuildStackedSeries(
+                bucketDefs, deepWorkRows.Select(r => (r.Date, r.TypeName, r.DurationMinutes)), chartUsesDailyAverage);
 
             var cards = new DashboardCardsDto(
                 new SportCardDto(sportTotal, sportTarget, sportBreakdown),
@@ -297,23 +304,32 @@ namespace Hayat.Infrastructure.Services
             return result;
         }
 
+        private static int BucketDayCount(BucketDef bucket) =>
+            bucket.End.DayNumber - bucket.Start.DayNumber + 1;
+
+        private static int ToChartMinutes(int totalMinutes, int dayCount, bool perDayAverage) =>
+            perDayAverage && dayCount > 0 ? totalMinutes / dayCount : totalMinutes;
+
         private static List<TimeBucketValueDto> BuildSimpleSeries(
             List<BucketDef> buckets,
-            IEnumerable<(DateOnly Date, int Minutes)> data)
+            IEnumerable<(DateOnly Date, int Minutes)> data,
+            bool perDayAverage = false)
         {
             var dataList = data.ToList();
             return buckets.Select(b =>
-                new TimeBucketValueDto(
+            {
+                var total = dataList.Where(d => d.Date >= b.Start && d.Date <= b.End).Sum(d => d.Minutes);
+                return new TimeBucketValueDto(
                     b.Key,
                     b.Label,
-                    dataList.Where(d => d.Date >= b.Start && d.Date <= b.End).Sum(d => d.Minutes)
-                )
-            ).ToList();
+                    ToChartMinutes(total, BucketDayCount(b), perDayAverage));
+            }).ToList();
         }
 
         private static StackedSeriesDto BuildStackedSeries(
             List<BucketDef> buckets,
-            IEnumerable<(DateOnly Date, string TypeName, int Minutes)> data)
+            IEnumerable<(DateOnly Date, string TypeName, int Minutes)> data,
+            bool perDayAverage = false)
         {
             var dataList = data.ToList();
 
@@ -327,12 +343,19 @@ namespace Hayat.Infrastructure.Services
             var stackedBuckets = buckets.Select(b =>
             {
                 var inRange = dataList.Where(d => d.Date >= b.Start && d.Date <= b.End).ToList();
+                var dayCount = BucketDayCount(b);
                 var segments = new Dictionary<string, int>();
                 foreach (var cat in categories)
                 {
-                    segments[cat] = inRange.Where(d => d.TypeName == cat).Sum(d => d.Minutes);
+                    var segTotal = inRange.Where(d => d.TypeName == cat).Sum(d => d.Minutes);
+                    segments[cat] = ToChartMinutes(segTotal, dayCount, perDayAverage);
                 }
-                return new StackedBucketDto(b.Key, b.Label, inRange.Sum(d => d.Minutes), segments);
+                var bucketTotal = inRange.Sum(d => d.Minutes);
+                return new StackedBucketDto(
+                    b.Key,
+                    b.Label,
+                    ToChartMinutes(bucketTotal, dayCount, perDayAverage),
+                    segments);
             }).ToList();
 
             return new StackedSeriesDto(categories, stackedBuckets);
