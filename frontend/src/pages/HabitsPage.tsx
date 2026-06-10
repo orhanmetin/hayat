@@ -44,7 +44,8 @@ export const HabitsPage: React.FC = () => {
     load();
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`"${name}" alışkanlığını silmek istediğinize emin misiniz?`)) return;
     await habitsApi.remove(id);
     if (expandedChartId === id) setExpandedChartId(null);
     load();
@@ -151,7 +152,7 @@ export const HabitsPage: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDelete(habit.id)}
+                      onClick={() => handleDelete(habit.id, habit.name)}
                       className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg"
                       aria-label="Sil"
                     >

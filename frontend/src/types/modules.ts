@@ -6,6 +6,10 @@ export interface Anecdote {
   updatedAt: string;
 }
 
+export interface ActiveTimer {
+  startTime: string;
+}
+
 export interface LookupType {
   id: number;
   name: string;
@@ -213,6 +217,8 @@ export interface SportActivity {
 
 export interface MeditationSession {
   id: number;
+  meditationTypeId: number;
+  typeName: string;
   date: string;
   durationMinutes: number;
 }

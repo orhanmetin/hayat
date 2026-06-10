@@ -76,6 +76,19 @@ namespace Hayat.Infrastructure.Data
                 }
             }
 
+            if (!context.MeditationTypes.Any())
+            {
+                var meditationTypes = new[] { "Oturma", "Uzanma", "Yapma", "Yapmama" };
+                for (var i = 0; i < meditationTypes.Length; i++)
+                {
+                    context.MeditationTypes.Add(new MeditationType
+                    {
+                        Name = meditationTypes[i],
+                        SortOrder = i + 1
+                    });
+                }
+            }
+
             context.SaveChanges();
         }
 

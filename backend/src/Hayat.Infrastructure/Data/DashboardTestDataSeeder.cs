@@ -41,6 +41,8 @@ namespace Hayat.Infrastructure.Data
             var rng = new Random(20260524);
             var sportTypes = context.SportActivityTypes.Where(t => t.IsActive).OrderBy(t => t.SortOrder).ToList();
             var deepWorkTypes = context.DeepWorkTypes.Where(t => t.IsActive).OrderBy(t => t.SortOrder).ToList();
+            var meditationTypes = context.MeditationTypes.Where(t => t.IsActive).OrderBy(t => t.SortOrder).ToList();
+            if (meditationTypes.Count == 0) return;
             var habits = EnsureHabits(context, admin.Id);
             var habitIds = habits.Select(h => h.Id).ToList();
             var existingCheckInKeys = context.HabitCheckIns
@@ -127,6 +129,7 @@ namespace Hayat.Infrastructure.Data
                 meditationSessions.Add(new MeditationSession
                 {
                     UserId = admin.Id,
+                    MeditationTypeId = meditationTypes[rng.Next(meditationTypes.Count)].Id,
                     Date = date,
                     DurationMinutes = 5 + rng.Next(0, 6) * 5,
                     CreatedAt = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)

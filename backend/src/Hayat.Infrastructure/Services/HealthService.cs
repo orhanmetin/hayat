@@ -204,34 +204,56 @@ namespace Hayat.Infrastructure.Services
 
         public async Task<IReadOnlyList<MeditationSessionDto>> GetMeditationsAsync(int userId, DateOnly? from, DateOnly? to)
         {
-            var query = _db.MeditationSessions.AsNoTracking().Where(m => m.UserId == userId);
+            var query = _db.MeditationSessions.AsNoTracking()
+                .Include(m => m.MeditationType)
+                .Where(m => m.UserId == userId);
             if (from.HasValue) query = query.Where(m => m.Date >= from.Value);
             if (to.HasValue) query = query.Where(m => m.Date <= to.Value);
 
             return await query.OrderByDescending(m => m.Date)
-                .Select(m => new MeditationSessionDto(m.Id, m.Date, m.DurationMinutes))
+                .Select(m => new MeditationSessionDto(
+                    m.Id,
+                    m.Date,
+                    m.DurationMinutes,
+                    m.MeditationTypeId,
+                    m.MeditationType.Name))
                 .ToListAsync();
         }
 
         public async Task<MeditationSessionDto?> CreateMeditationAsync(int userId, CreateMeditationRequest request)
         {
             if (request.DurationMinutes <= 0) return null;
-            var session = new MeditationSession { UserId = userId, Date = request.Date, DurationMinutes = request.DurationMinutes };
+            var type = await _db.MeditationTypes.AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == request.MeditationTypeId && t.IsActive);
+            if (type == null) return null;
+
+            var session = new MeditationSession
+            {
+                UserId = userId,
+                MeditationTypeId = request.MeditationTypeId,
+                Date = request.Date,
+                DurationMinutes = request.DurationMinutes
+            };
             _db.MeditationSessions.Add(session);
             await _db.SaveChangesAsync();
-            return new MeditationSessionDto(session.Id, session.Date, session.DurationMinutes);
+            return new MeditationSessionDto(session.Id, session.Date, session.DurationMinutes, type.Id, type.Name);
         }
 
         public async Task<MeditationSessionDto?> UpdateMeditationAsync(int userId, int id, UpdateMeditationRequest request)
         {
             if (request.DurationMinutes <= 0) return null;
+            var type = await _db.MeditationTypes.AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == request.MeditationTypeId && t.IsActive);
+            if (type == null) return null;
+
             var session = await _db.MeditationSessions.FirstOrDefaultAsync(m => m.Id == id && m.UserId == userId);
             if (session == null) return null;
 
             session.Date = request.Date;
             session.DurationMinutes = request.DurationMinutes;
+            session.MeditationTypeId = request.MeditationTypeId;
             await _db.SaveChangesAsync();
-            return new MeditationSessionDto(session.Id, session.Date, session.DurationMinutes);
+            return new MeditationSessionDto(session.Id, session.Date, session.DurationMinutes, type.Id, type.Name);
         }
 
         public async Task<bool> DeleteMeditationAsync(int userId, int id)

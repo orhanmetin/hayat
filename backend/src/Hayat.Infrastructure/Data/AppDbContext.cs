@@ -17,6 +17,7 @@ namespace Hayat.Infrastructure.Data
         public DbSet<User> Users => Set<User>();
         public DbSet<SportActivityType> SportActivityTypes => Set<SportActivityType>();
         public DbSet<DeepWorkType> DeepWorkTypes => Set<DeepWorkType>();
+        public DbSet<MeditationType> MeditationTypes => Set<MeditationType>();
         public DbSet<Habit> Habits => Set<Habit>();
         public DbSet<HabitCheckIn> HabitCheckIns => Set<HabitCheckIn>();
         public DbSet<SleepLog> SleepLogs => Set<SleepLog>();
@@ -26,6 +27,7 @@ namespace Hayat.Infrastructure.Data
         public DbSet<WeeklyGoal> WeeklyGoals => Set<WeeklyGoal>();
         public DbSet<UserStravaConnection> UserStravaConnections => Set<UserStravaConnection>();
         public DbSet<Anecdote> Anecdotes => Set<Anecdote>();
+        public DbSet<ActiveTimer> ActiveTimers => Set<ActiveTimer>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -48,6 +50,13 @@ namespace Hayat.Infrastructure.Data
             });
 
             modelBuilder.Entity<DeepWorkType>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Name).HasMaxLength(80).IsRequired();
+                e.HasIndex(x => x.Name).IsUnique();
+            });
+
+            modelBuilder.Entity<MeditationType>(e =>
             {
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Name).HasMaxLength(80).IsRequired();
@@ -102,6 +111,7 @@ namespace Hayat.Infrastructure.Data
             {
                 e.HasKey(x => x.Id);
                 e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(x => x.MeditationType).WithMany().HasForeignKey(x => x.MeditationTypeId).OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<DeepWorkSession>(e =>
@@ -124,6 +134,13 @@ namespace Hayat.Infrastructure.Data
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Text).HasMaxLength(2000).IsRequired();
                 e.Property(x => x.Author).HasMaxLength(120);
+                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<ActiveTimer>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.HasIndex(x => x.UserId).IsUnique();
                 e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
         }

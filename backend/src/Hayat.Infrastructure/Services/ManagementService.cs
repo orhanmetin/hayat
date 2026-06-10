@@ -27,6 +27,12 @@ namespace Hayat.Infrastructure.Services
                 .Select(t => new LookupTypeDto(t.Id, t.Name, t.IsActive, t.SortOrder))
                 .ToListAsync();
 
+        public async Task<IReadOnlyList<LookupTypeDto>> GetMeditationTypesAsync() =>
+            await _db.MeditationTypes.AsNoTracking()
+                .OrderBy(t => t.SortOrder).ThenBy(t => t.Name)
+                .Select(t => new LookupTypeDto(t.Id, t.Name, t.IsActive, t.SortOrder))
+                .ToListAsync();
+
         public async Task<LookupTypeDto?> CreateSportTypeAsync(CreateLookupTypeRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Name)) return null;
@@ -47,6 +53,16 @@ namespace Hayat.Infrastructure.Services
             return new LookupTypeDto(entity.Id, entity.Name, entity.IsActive, entity.SortOrder);
         }
 
+        public async Task<LookupTypeDto?> CreateMeditationTypeAsync(CreateLookupTypeRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Name)) return null;
+            var maxOrder = await _db.MeditationTypes.MaxAsync(t => (int?)t.SortOrder) ?? 0;
+            var entity = new MeditationType { Name = request.Name.Trim(), SortOrder = maxOrder + 1 };
+            _db.MeditationTypes.Add(entity);
+            await _db.SaveChangesAsync();
+            return new LookupTypeDto(entity.Id, entity.Name, entity.IsActive, entity.SortOrder);
+        }
+
         public async Task<LookupTypeDto?> UpdateSportTypeAsync(int id, UpdateLookupTypeRequest request)
         {
             var entity = await _db.SportActivityTypes.FindAsync(id);
@@ -60,6 +76,16 @@ namespace Hayat.Infrastructure.Services
         public async Task<LookupTypeDto?> UpdateDeepWorkTypeAsync(int id, UpdateLookupTypeRequest request)
         {
             var entity = await _db.DeepWorkTypes.FindAsync(id);
+            if (entity == null) return null;
+            if (!string.IsNullOrWhiteSpace(request.Name)) entity.Name = request.Name.Trim();
+            if (request.IsActive.HasValue) entity.IsActive = request.IsActive.Value;
+            await _db.SaveChangesAsync();
+            return new LookupTypeDto(entity.Id, entity.Name, entity.IsActive, entity.SortOrder);
+        }
+
+        public async Task<LookupTypeDto?> UpdateMeditationTypeAsync(int id, UpdateLookupTypeRequest request)
+        {
+            var entity = await _db.MeditationTypes.FindAsync(id);
             if (entity == null) return null;
             if (!string.IsNullOrWhiteSpace(request.Name)) entity.Name = request.Name.Trim();
             if (request.IsActive.HasValue) entity.IsActive = request.IsActive.Value;
@@ -85,6 +111,17 @@ namespace Hayat.Infrastructure.Services
             var inUse = await _db.DeepWorkSessions.AnyAsync(a => a.DeepWorkTypeId == id);
             if (inUse) { entity.IsActive = false; }
             else { _db.DeepWorkTypes.Remove(entity); }
+            await _db.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> DeleteMeditationTypeAsync(int id)
+        {
+            var entity = await _db.MeditationTypes.FindAsync(id);
+            if (entity == null) return false;
+            var inUse = await _db.MeditationSessions.AnyAsync(a => a.MeditationTypeId == id);
+            if (inUse) { entity.IsActive = false; }
+            else { _db.MeditationTypes.Remove(entity); }
             await _db.SaveChangesAsync();
             return true;
         }

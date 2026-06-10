@@ -12,6 +12,7 @@ import { parseDistanceKm, normalizeStravaUrl } from "../lib/sport";
 import { TurkishDateInput } from "../components/ui/TurkishDateInput";
 import { RecordHistoryPanel } from "../components/history/RecordHistoryPanel";
 import { SleepEntryForm } from "../components/sleep/SleepEntryForm";
+import { ActiveTimerPanel } from "../components/timer/ActiveTimerPanel";
 import { todayIso } from "../lib/format";
 import type { LookupType } from "../types/modules";
 import { cn } from "../lib/utils";
@@ -31,6 +32,7 @@ export const LogEntryPage: React.FC = () => {
   const [pageView, setPageView] = useState<PageView>("add");
   const [tab, setTab] = useState<Tab>("sleep");
   const [sportTypes, setSportTypes] = useState<LookupType[]>([]);
+  const [meditationTypes, setMeditationTypes] = useState<LookupType[]>([]);
   const [deepWorkTypes, setDeepWorkTypes] = useState<LookupType[]>([]);
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +44,7 @@ export const LogEntryPage: React.FC = () => {
   const [sportStravaLink, setSportStravaLink] = useState("");
   const [sportNote, setSportNote] = useState("");
 
+  const [meditationTypeId, setMeditationTypeId] = useState(0);
   const [meditationDate, setMeditationDate] = useState(todayIso());
   const [meditationMinutes, setMeditationMinutes] = useState(15);
 
@@ -54,6 +57,12 @@ export const LogEntryPage: React.FC = () => {
     managementApi.getSportTypes().then((r) => {
       setSportTypes(r.data.filter((t) => t.isActive));
       if (r.data[0]) setSportTypeId(r.data[0].id);
+    });
+    managementApi.getMeditationTypes().then((r) => {
+      const active = r.data.filter((t) => t.isActive);
+      setMeditationTypes(active);
+      const oturma = active.find((t) => t.name === "Oturma");
+      setMeditationTypeId(oturma?.id ?? active[0]?.id ?? 0);
     });
     managementApi.getDeepWorkTypes().then((r) => {
       setDeepWorkTypes(r.data.filter((t) => t.isActive));
@@ -103,7 +112,11 @@ export const LogEntryPage: React.FC = () => {
       return;
     }
     try {
-      await healthApi.createMeditation({ date: meditationDate, durationMinutes: meditationMinutes });
+      await healthApi.createMeditation({
+        date: meditationDate,
+        durationMinutes: meditationMinutes,
+        meditationTypeId,
+      });
       showSuccess("Meditasyon kaydı eklendi.");
     } catch {
       setError("Meditasyon kaydı eklenemedi.");
@@ -135,6 +148,12 @@ export const LogEntryPage: React.FC = () => {
         <h1 className="text-2xl font-bold">Olaylar</h1>
         <p className="text-sm text-slate-500 mt-1">Yeni olay ekle veya geçmişi düzenle</p>
       </div>
+
+      <ActiveTimerPanel
+        deepWorkTypes={deepWorkTypes}
+        meditationTypes={meditationTypes}
+        onSaved={() => showSuccess("Zamanlayıcı kaydı eklendi.")}
+      />
 
       <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-slate-100 dark:bg-white/5">
         <button
@@ -249,6 +268,18 @@ export const LogEntryPage: React.FC = () => {
 
         {tab === "meditation" && (
           <form onSubmit={submitMeditation} className="space-y-4">
+            <label className="block text-sm font-medium">Tür</label>
+            <select
+              value={meditationTypeId}
+              onChange={(e) => setMeditationTypeId(Number(e.target.value))}
+              className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent text-base"
+            >
+              {meditationTypes.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
             <TurkishDateInput label="Tarih" value={meditationDate} onChange={setMeditationDate} />
             <DurationMinutesInput value={meditationMinutes} onChange={setMeditationMinutes} />
             <button type="submit" className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover-scale">

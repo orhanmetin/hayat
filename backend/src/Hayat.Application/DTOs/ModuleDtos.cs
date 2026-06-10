@@ -91,9 +91,15 @@ namespace Hayat.Application.DTOs
     );
 
     // --- Meditation ---
-    public record MeditationSessionDto(int Id, DateOnly Date, int DurationMinutes);
-    public record CreateMeditationRequest(DateOnly Date, int DurationMinutes);
-    public record UpdateMeditationRequest(DateOnly Date, int DurationMinutes);
+    public record MeditationSessionDto(
+        int Id,
+        DateOnly Date,
+        int DurationMinutes,
+        int MeditationTypeId,
+        string TypeName
+    );
+    public record CreateMeditationRequest(DateOnly Date, int DurationMinutes, int MeditationTypeId);
+    public record UpdateMeditationRequest(DateOnly Date, int DurationMinutes, int MeditationTypeId);
 
     // --- Deep Work ---
     public record DeepWorkSessionDto(

@@ -9,12 +9,16 @@ namespace Hayat.Application.Interfaces
     {
         Task<IReadOnlyList<LookupTypeDto>> GetSportTypesAsync();
         Task<IReadOnlyList<LookupTypeDto>> GetDeepWorkTypesAsync();
+        Task<IReadOnlyList<LookupTypeDto>> GetMeditationTypesAsync();
         Task<LookupTypeDto?> CreateSportTypeAsync(CreateLookupTypeRequest request);
         Task<LookupTypeDto?> CreateDeepWorkTypeAsync(CreateLookupTypeRequest request);
+        Task<LookupTypeDto?> CreateMeditationTypeAsync(CreateLookupTypeRequest request);
         Task<LookupTypeDto?> UpdateSportTypeAsync(int id, UpdateLookupTypeRequest request);
         Task<LookupTypeDto?> UpdateDeepWorkTypeAsync(int id, UpdateLookupTypeRequest request);
+        Task<LookupTypeDto?> UpdateMeditationTypeAsync(int id, UpdateLookupTypeRequest request);
         Task<bool> DeleteSportTypeAsync(int id);
         Task<bool> DeleteDeepWorkTypeAsync(int id);
+        Task<bool> DeleteMeditationTypeAsync(int id);
     }
 
     public interface IHabitService

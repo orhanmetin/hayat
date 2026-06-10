@@ -6,7 +6,12 @@ import { DurationMinutesInput } from "../ui/DurationMinutesInput";
 import { parseDistanceKm, normalizeStravaUrl } from "../../lib/sport";
 import { TurkishDateInput } from "../ui/TurkishDateInput";
 import { TurkishDateTimeInput } from "../ui/TurkishDateTimeInput";
-import { formatDate, parseApiDateTime } from "../../lib/format";
+import {
+  formatDate,
+  parseApiDateTime,
+  roundDateToMinuteStep,
+  SLEEP_TIME_MINUTE_STEP,
+} from "../../lib/format";
 import type {
   DeepWorkSession,
   LookupType,
@@ -35,6 +40,7 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
   onSaved,
 }) => {
   const [sportTypes, setSportTypes] = useState<LookupType[]>([]);
+  const [meditationTypes, setMeditationTypes] = useState<LookupType[]>([]);
   const [deepWorkTypes, setDeepWorkTypes] = useState<LookupType[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +58,7 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
   const [sportStravaLink, setSportStravaLink] = useState("");
   const [sportNote, setSportNote] = useState("");
 
+  const [meditationTypeId, setMeditationTypeId] = useState(0);
   const [meditationDate, setMeditationDate] = useState("");
   const [meditationMinutes, setMeditationMinutes] = useState(15);
 
@@ -62,6 +69,7 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
 
   useEffect(() => {
     managementApi.getSportTypes().then((r) => setSportTypes(r.data.filter((t) => t.isActive)));
+    managementApi.getMeditationTypes().then((r) => setMeditationTypes(r.data.filter((t) => t.isActive)));
     managementApi.getDeepWorkTypes().then((r) => setDeepWorkTypes(r.data.filter((t) => t.isActive)));
   }, []);
 
@@ -70,10 +78,13 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
     setError(null);
     if (payload.kind === "sleep") {
       const r = payload.record;
-      setBedDateTime(parseApiDateTime(r.bedTime));
+      setBedDateTime(roundDateToMinuteStep(parseApiDateTime(r.bedTime), SLEEP_TIME_MINUTE_STEP));
       setHasWake(r.isComplete);
-      if (r.wakeTime) setWakeDateTime(parseApiDateTime(r.wakeTime));
-      else setWakeDateTime(new Date());
+      if (r.wakeTime) {
+        setWakeDateTime(roundDateToMinuteStep(parseApiDateTime(r.wakeTime), SLEEP_TIME_MINUTE_STEP));
+      } else {
+        setWakeDateTime(roundDateToMinuteStep(new Date(), SLEEP_TIME_MINUTE_STEP));
+      }
       setQuality(r.quality > 0 ? r.quality : 4);
       setSleepNote(r.note ?? "");
     }
@@ -88,6 +99,7 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
     }
     if (payload.kind === "meditation") {
       const r = payload.record;
+      setMeditationTypeId(r.meditationTypeId);
       setMeditationDate(typeof r.date === "string" ? r.date.slice(0, 10) : r.date);
       setMeditationMinutes(r.durationMinutes);
     }
@@ -159,6 +171,7 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
         await healthApi.updateMeditation(payload.record.id, {
           date: meditationDate,
           durationMinutes: meditationMinutes,
+          meditationTypeId,
         });
       } else {
         await deepWorkApi.update(payload.record.id, {
@@ -219,6 +232,7 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
                 label="Yatış"
                 value={bedDateTime}
                 onChange={setBedDateTime}
+                minuteStep={SLEEP_TIME_MINUTE_STEP}
               />
               <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-white/10 cursor-pointer">
                 <input
@@ -235,6 +249,7 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
                     label="Kalkış"
                     value={wakeDateTime}
                     onChange={setWakeDateTime}
+                    minuteStep={SLEEP_TIME_MINUTE_STEP}
                   />
                   <label className="block text-sm font-medium">Kalite (1-5)</label>
                   <div className="flex gap-2">
@@ -310,6 +325,18 @@ export const EditRecordModal: React.FC<EditRecordModalProps> = ({
 
           {payload.kind === "meditation" && (
             <>
+              <label className="block text-sm font-medium">Tür</label>
+              <select
+                value={meditationTypeId}
+                onChange={(e) => setMeditationTypeId(Number(e.target.value))}
+                className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent"
+              >
+                {meditationTypes.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
               <TurkishDateInput label="Tarih" value={meditationDate} onChange={setMeditationDate} />
               <DurationMinutesInput value={meditationMinutes} onChange={setMeditationMinutes} />
             </>

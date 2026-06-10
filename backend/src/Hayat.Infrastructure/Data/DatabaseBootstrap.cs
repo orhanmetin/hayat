@@ -85,6 +85,103 @@ namespace Hayat.Infrastructure.Data
                     """);
                 logger?.LogInformation("HabitCheckIns index updated for multiple daily check-ins.");
             }
+
+            EnsureMeditationTypesSchema(context, logger);
+
+            if (!TableExists(context, "ActiveTimers"))
+            {
+                context.Database.ExecuteSqlRaw("""
+                    CREATE TABLE IF NOT EXISTS "ActiveTimers" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_ActiveTimers" PRIMARY KEY AUTOINCREMENT,
+                        "UserId" INTEGER NOT NULL,
+                        "StartTime" TEXT NOT NULL,
+                        CONSTRAINT "FK_ActiveTimers_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+                    );
+                    CREATE UNIQUE INDEX IF NOT EXISTS "IX_ActiveTimers_UserId" ON "ActiveTimers" ("UserId");
+                    """);
+                logger?.LogInformation("Created ActiveTimers table (incremental schema).");
+            }
+        }
+
+        private static void EnsureMeditationTypesSchema(AppDbContext context, ILogger? logger)
+        {
+            if (!TableExists(context, "MeditationTypes"))
+            {
+                context.Database.ExecuteSqlRaw("""
+                    CREATE TABLE IF NOT EXISTS "MeditationTypes" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_MeditationTypes" PRIMARY KEY AUTOINCREMENT,
+                        "Name" TEXT NOT NULL,
+                        "IsActive" INTEGER NOT NULL DEFAULT 1,
+                        "SortOrder" INTEGER NOT NULL DEFAULT 0
+                    );
+                    CREATE UNIQUE INDEX IF NOT EXISTS "IX_MeditationTypes_Name" ON "MeditationTypes" ("Name");
+                    """);
+                logger?.LogInformation("Created MeditationTypes table (incremental schema).");
+            }
+
+            var typeCount = 0;
+            try
+            {
+                var connection = context.Database.GetDbConnection();
+                if (connection.State != ConnectionState.Open)
+                    connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT COUNT(*) FROM MeditationTypes;";
+                typeCount = Convert.ToInt32(command.ExecuteScalar());
+            }
+            catch (SqliteException)
+            {
+                return;
+            }
+
+            if (typeCount == 0)
+            {
+                context.Database.ExecuteSqlRaw("""
+                    INSERT INTO "MeditationTypes" ("Name", "IsActive", "SortOrder") VALUES ('Oturma', 1, 1);
+                    INSERT INTO "MeditationTypes" ("Name", "IsActive", "SortOrder") VALUES ('Uzanma', 1, 2);
+                    INSERT INTO "MeditationTypes" ("Name", "IsActive", "SortOrder") VALUES ('Yapma', 1, 3);
+                    INSERT INTO "MeditationTypes" ("Name", "IsActive", "SortOrder") VALUES ('Yapmama', 1, 4);
+                    """);
+                logger?.LogInformation("Seeded default meditation types.");
+            }
+
+            if (TableExists(context, "MeditationSessions") && !ColumnExists(context, "MeditationSessions", "MeditationTypeId"))
+            {
+                context.Database.ExecuteSqlRaw("""
+                    ALTER TABLE "MeditationSessions" ADD COLUMN "MeditationTypeId" INTEGER NULL;
+                    """);
+                context.Database.ExecuteSqlRaw("""
+                    UPDATE "MeditationSessions"
+                    SET "MeditationTypeId" = (SELECT "Id" FROM "MeditationTypes" WHERE "Name" = 'Oturma' LIMIT 1)
+                    WHERE "MeditationTypeId" IS NULL;
+                    """);
+                logger?.LogInformation("Added MeditationTypeId to MeditationSessions and backfilled.");
+            }
+        }
+
+        private static bool ColumnExists(AppDbContext context, string tableName, string columnName)
+        {
+            try
+            {
+                var connection = context.Database.GetDbConnection();
+                if (connection.State != ConnectionState.Open)
+                    connection.Open();
+
+                using var command = connection.CreateCommand();
+                command.CommandText = $"PRAGMA table_info(\"{tableName}\");";
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    var name = reader.GetString(1);
+                    if (string.Equals(name, columnName, StringComparison.OrdinalIgnoreCase))
+                        return true;
+                }
+                return false;
+            }
+            catch (SqliteException)
+            {
+                return false;
+            }
         }
 
         private static bool IndexIsUnique(AppDbContext context, string indexName)

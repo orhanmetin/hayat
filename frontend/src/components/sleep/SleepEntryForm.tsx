@@ -2,7 +2,12 @@ import React, { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { healthApi } from "../../services/modules";
 import { TurkishDateTimeInput } from "../ui/TurkishDateTimeInput";
-import { formatDateTime, parseApiDateTime } from "../../lib/format";
+import {
+  formatDateTime,
+  parseApiDateTime,
+  roundDateToMinuteStep,
+  SLEEP_TIME_MINUTE_STEP,
+} from "../../lib/format";
 import type { SleepLog } from "../../types/modules";
 import { cn } from "../../lib/utils";
 
@@ -21,19 +26,15 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({
   const [openSleep, setOpenSleep] = useState<SleepLog | null>(null);
   const [loadingOpen, setLoadingOpen] = useState(true);
 
-  const [bedDateTime, setBedDateTime] = useState(() => {
-    const d = new Date();
-    d.setHours(23, 0, 0, 0);
-    return d;
-  });
-  const [wakeDateTime, setWakeDateTime] = useState(() => new Date());
+  const defaultSleepDateTime = () => roundDateToMinuteStep(new Date(), SLEEP_TIME_MINUTE_STEP);
+
+  const [bedDateTime, setBedDateTime] = useState(defaultSleepDateTime);
+  const [wakeDateTime, setWakeDateTime] = useState(defaultSleepDateTime);
   const [quality, setQuality] = useState(4);
   const [note, setNote] = useState("");
   const [includeWakeNow, setIncludeWakeNow] = useState(false);
   const [wakeTimeTouched, setWakeTimeTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
-  const defaultWakeFromBed = (bed: Date) => new Date(bed.getTime() + 7 * 60 * 60 * 1000);
 
   const loadOpen = async () => {
     setLoadingOpen(true);
@@ -54,7 +55,7 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({
 
   useEffect(() => {
     if (openSleep) {
-      setWakeDateTime(defaultWakeFromBed(parseApiDateTime(openSleep.bedTime)));
+      setWakeDateTime(defaultSleepDateTime());
       setWakeTimeTouched(false);
     }
   }, [openSleep]);
@@ -62,15 +63,12 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({
   const handleIncludeWakeNowChange = (checked: boolean) => {
     setIncludeWakeNow(checked);
     if (checked && !wakeTimeTouched) {
-      setWakeDateTime(defaultWakeFromBed(bedDateTime));
+      setWakeDateTime(defaultSleepDateTime());
     }
   };
 
   const handleBedDateTimeChange = (next: Date) => {
     setBedDateTime(next);
-    if (includeWakeNow && !wakeTimeTouched) {
-      setWakeDateTime(defaultWakeFromBed(next));
-    }
   };
 
   const handleWakeDateTimeChange = (next: Date) => {
@@ -208,6 +206,7 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({
             label="Yatış Zamanı"
             value={bedDateTime}
             onChange={handleBedDateTimeChange}
+            minuteStep={SLEEP_TIME_MINUTE_STEP}
           />
 
           <label className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 dark:border-white/10 cursor-pointer">
@@ -231,6 +230,7 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({
                 label="Kalkış Zamanı"
                 value={wakeDateTime}
                 onChange={handleWakeDateTimeChange}
+                minuteStep={SLEEP_TIME_MINUTE_STEP}
               />
               <label className="block text-sm font-medium">Uyku Kalitesi (1-5)</label>
               <div className="flex gap-2">
@@ -279,6 +279,7 @@ export const SleepEntryForm: React.FC<SleepEntryFormProps> = ({
             label="Kalkış Zamanı"
             value={wakeDateTime}
             onChange={handleWakeDateTimeChange}
+            minuteStep={SLEEP_TIME_MINUTE_STEP}
           />
 
           <label className="block text-sm font-medium">Uyku Kalitesi (1-5)</label>

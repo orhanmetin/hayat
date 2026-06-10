@@ -44,6 +44,15 @@ export function formatDateTime(value: string | Date): string {
   return dateTimeFormatter.format(d);
 }
 
+export const SLEEP_TIME_MINUTE_STEP = 5;
+
+/** Dakikayı verilen adıma yuvarlar (örn. 14:07 → 14:05, 14:08 → 14:10). */
+export function roundDateToMinuteStep(date: Date, step: number = SLEEP_TIME_MINUTE_STEP): Date {
+  if (step <= 1) return new Date(date);
+  const ms = step * 60 * 1000;
+  return new Date(Math.round(date.getTime() / ms) * ms);
+}
+
 /** Grafik ekseni için kısa tarih — örn. 24.05 */
 export function formatChartDate(value: string): string {
   if (/^\d{2}\.\d{2}\.\d{4}$/.test(value)) {

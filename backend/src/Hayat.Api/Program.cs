@@ -102,6 +102,7 @@ builder.Services.AddScoped<IDeepWorkService, DeepWorkService>();
 builder.Services.AddScoped<IWeeklyGoalService, WeeklyGoalService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IAnecdoteService, AnecdoteService>();
+builder.Services.AddScoped<IActiveTimerService, ActiveTimerService>();
 
 var app = builder.Build();
 

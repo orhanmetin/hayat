@@ -8,16 +8,20 @@ import type { LookupType } from "../../types/modules";
 export const ActivityTypesPanel: React.FC = () => {
   const [sportTypes, setSportTypes] = useState<LookupType[]>([]);
   const [deepWorkTypes, setDeepWorkTypes] = useState<LookupType[]>([]);
+  const [meditationTypes, setMeditationTypes] = useState<LookupType[]>([]);
   const [newSport, setNewSport] = useState("");
   const [newDeepWork, setNewDeepWork] = useState("");
+  const [newMeditation, setNewMeditation] = useState("");
 
   const load = async () => {
-    const [sport, deep] = await Promise.all([
+    const [sport, deep, meditation] = await Promise.all([
       managementApi.getSportTypes(),
       managementApi.getDeepWorkTypes(),
+      managementApi.getMeditationTypes(),
     ]);
     setSportTypes(sport.data);
     setDeepWorkTypes(deep.data);
+    setMeditationTypes(meditation.data);
   };
 
   useEffect(() => {
@@ -40,6 +44,14 @@ export const ActivityTypesPanel: React.FC = () => {
     load();
   };
 
+  const addMeditation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMeditation.trim()) return;
+    await managementApi.createMeditationType(newMeditation.trim());
+    setNewMeditation("");
+    load();
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -48,7 +60,7 @@ export const ActivityTypesPanel: React.FC = () => {
           Aktivite Türleri
         </h2>
         <p className="text-sm text-slate-500 mt-1">
-          Spor ve deep work kayıtlarında kullanılacak alt türler
+          Spor, meditasyon ve deep work kayıtlarında kullanılacak alt türler
         </p>
       </div>
 
@@ -63,6 +75,20 @@ export const ActivityTypesPanel: React.FC = () => {
           onAdd={addSport}
           onDelete={async (id) => {
             await managementApi.deleteSportType(id);
+            load();
+          }}
+        />
+      </div>
+
+      <div className="p-5 rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5">
+        <TypeListPanel
+          title="Meditasyon Türleri"
+          items={meditationTypes}
+          newValue={newMeditation}
+          onNewValueChange={setNewMeditation}
+          onAdd={addMeditation}
+          onDelete={async (id) => {
+            await managementApi.deleteMeditationType(id);
             load();
           }}
         />

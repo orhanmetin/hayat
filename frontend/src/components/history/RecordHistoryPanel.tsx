@@ -76,7 +76,7 @@ export const RecordHistoryPanel: React.FC = () => {
           id: r.id,
           kind: "meditation" as const,
           sortKey: r.date,
-          title: "Meditasyon",
+          title: r.typeName,
           subtitle: formatDate(r.date),
           meta: formatMinutes(r.durationMinutes),
           raw: r,

@@ -55,5 +55,26 @@ namespace Hayat.Api.Controllers
         [HttpDelete("deep-work-types/{id:int}")]
         public async Task<IActionResult> DeleteDeepWorkType(int id) =>
             await _service.DeleteDeepWorkTypeAsync(id) ? NoContent() : NotFound();
+
+        [HttpGet("meditation-types")]
+        public async Task<IActionResult> GetMeditationTypes() => Ok(await _service.GetMeditationTypesAsync());
+
+        [HttpPost("meditation-types")]
+        public async Task<IActionResult> CreateMeditationType([FromBody] CreateLookupTypeRequest request)
+        {
+            var result = await _service.CreateMeditationTypeAsync(request);
+            return result == null ? BadRequest() : Ok(result);
+        }
+
+        [HttpPut("meditation-types/{id:int}")]
+        public async Task<IActionResult> UpdateMeditationType(int id, [FromBody] UpdateLookupTypeRequest request)
+        {
+            var result = await _service.UpdateMeditationTypeAsync(id, request);
+            return result == null ? NotFound() : Ok(result);
+        }
+
+        [HttpDelete("meditation-types/{id:int}")]
+        public async Task<IActionResult> DeleteMeditationType(int id) =>
+            await _service.DeleteMeditationTypeAsync(id) ? NoContent() : NotFound();
     }
 }

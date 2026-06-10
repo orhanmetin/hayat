@@ -1,5 +1,6 @@
 import { apiClient } from "./api";
 import type {
+  ActiveTimer,
   DashboardAnalytics,
   DashboardBucket,
   DashboardOverview,
@@ -70,6 +71,11 @@ export const managementApi = {
     apiClient.post<LookupType>("/management/deep-work-types", { name }),
   deleteDeepWorkType: (id: number) =>
     apiClient.delete(`/management/deep-work-types/${id}`),
+  getMeditationTypes: () => apiClient.get<LookupType[]>("/management/meditation-types"),
+  createMeditationType: (name: string) =>
+    apiClient.post<LookupType>("/management/meditation-types", { name }),
+  deleteMeditationType: (id: number) =>
+    apiClient.delete(`/management/meditation-types/${id}`),
 };
 
 export const healthApi = {
@@ -131,11 +137,22 @@ export const healthApi = {
     apiClient.get<MeditationSession[]>("/health/meditation", {
       params: { from, to },
     }),
-  createMeditation: (data: { date: string; durationMinutes: number }) =>
-    apiClient.post("/health/meditation", data),
-  updateMeditation: (id: number, data: { date: string; durationMinutes: number }) =>
-    apiClient.put(`/health/meditation/${id}`, data),
+  createMeditation: (data: {
+    date: string;
+    durationMinutes: number;
+    meditationTypeId: number;
+  }) => apiClient.post("/health/meditation", data),
+  updateMeditation: (
+    id: number,
+    data: { date: string; durationMinutes: number; meditationTypeId: number }
+  ) => apiClient.put(`/health/meditation/${id}`, data),
   deleteMeditation: (id: number) => apiClient.delete(`/health/meditation/${id}`),
+};
+
+export const activeTimerApi = {
+  get: () => apiClient.get<ActiveTimer | null>("/active-timer"),
+  start: () => apiClient.post<ActiveTimer>("/active-timer/start"),
+  clear: () => apiClient.delete("/active-timer"),
 };
 
 export const deepWorkApi = {
