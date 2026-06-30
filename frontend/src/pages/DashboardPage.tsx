@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Activity, MoonStar, Brain, Flower2 } from "lucide-react";
 import { dashboardApi } from "../services/modules";
 import { formatDate } from "../lib/format";
+import { cn } from "../lib/utils";
 import {
   DASHBOARD_PERIODS,
   BUCKET_LABELS,
@@ -19,12 +20,21 @@ import type {
   DashboardPeriod,
 } from "../types/modules";
 
+const CARD_KEYS: DashboardCardKey[] = ["sport", "sleep", "deepwork", "meditation"];
+
 const CARD_ICONS = {
   sport: Activity,
   sleep: MoonStar,
   deepwork: Brain,
   meditation: Flower2,
 } as const;
+
+const LG_COL_START: Record<DashboardCardKey, string> = {
+  sport: "lg:col-start-1",
+  sleep: "lg:col-start-2",
+  deepwork: "lg:col-start-3",
+  meditation: "lg:col-start-4",
+};
 
 const PERIOD_PRIMARY_LABEL: Record<DashboardPeriod, Record<"total" | "averagePerDay", string>> = {
   weekly: {
@@ -84,11 +94,11 @@ export const DashboardPage: React.FC = () => {
   const showTargets = overview?.showTargets ?? false;
   const primaryLabels = PERIOD_PRIMARY_LABEL[period];
 
-  const renderActiveChart = () => {
+  const renderChart = (key: DashboardCardKey) => {
     if (!overview || !series) return null;
-    if (activeCard === "sport") return <StackedBarChart series={series.sport} />;
-    if (activeCard === "deepwork") return <StackedBarChart series={series.deepWork} />;
-    if (activeCard === "sleep") {
+    if (key === "sport") return <StackedBarChart series={series.sport} />;
+    if (key === "deepwork") return <StackedBarChart series={series.deepWork} />;
+    if (key === "sleep") {
       return (
         <SimpleBarChart
           data={series.sleep}
@@ -111,6 +121,39 @@ export const DashboardPage: React.FC = () => {
       />
     );
   };
+
+  const renderTrendPanel = (key: DashboardCardKey) => (
+    <div className="p-4 md:p-6 rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5 space-y-4 col-span-full sm:col-span-2 lg:col-span-4 lg:row-start-2 lg:col-start-1">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            {React.createElement(CARD_ICONS[key], {
+              size: 16,
+              style: { color: CARD_META[key].primaryColor },
+            })}
+            {CARD_META[key].label} Trendi
+          </h3>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Kırılım:{" "}
+            <span className="font-medium text-slate-500">
+              {BUCKET_LABELS[overview!.bucket]}
+            </span>
+          </p>
+        </div>
+        {bucketOptions && (
+          <SegmentedControl
+            size="sm"
+            options={bucketOptions}
+            value={overview!.bucket}
+            onChange={(id) => setBucket(id)}
+            ariaLabel="Kırılım seçimi"
+          />
+        )}
+      </div>
+
+      {renderChart(key)}
+    </div>
+  );
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -136,83 +179,52 @@ export const DashboardPage: React.FC = () => {
       {loading && !overview ? (
         <p className="text-center text-slate-400 py-8">Yükleniyor...</p>
       ) : overview && cards ? (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
-            <SummaryCard
-              meta={CARD_META.sport}
-              icon={CARD_ICONS.sport}
-              isActive={activeCard === "sport"}
-              onClick={() => setActiveCard("sport")}
-              primaryMinutes={cards.sport.totalMinutes}
-              primaryLabel={primaryLabels.total}
-              targetMinutes={cards.sport.targetMinutes}
-              showTarget={showTargets}
-              breakdown={cards.sport.breakdown}
-            />
-            <SummaryCard
-              meta={CARD_META.sleep}
-              icon={CARD_ICONS.sleep}
-              isActive={activeCard === "sleep"}
-              onClick={() => setActiveCard("sleep")}
-              primaryMinutes={cards.sleep.averageMinutesPerDay}
-              primaryLabel={primaryLabels.averagePerDay}
-              targetMinutes={cards.sleep.targetAverageMinutesPerDay}
-              showTarget={showTargets}
-            />
-            <SummaryCard
-              meta={CARD_META.deepwork}
-              icon={CARD_ICONS.deepwork}
-              isActive={activeCard === "deepwork"}
-              onClick={() => setActiveCard("deepwork")}
-              primaryMinutes={cards.deepWork.averageMinutesPerDay}
-              primaryLabel={primaryLabels.averagePerDay}
-              targetMinutes={cards.deepWork.targetAverageMinutesPerDay}
-              showTarget={showTargets}
-              breakdown={cards.deepWork.breakdown}
-            />
-            <SummaryCard
-              meta={CARD_META.meditation}
-              icon={CARD_ICONS.meditation}
-              isActive={activeCard === "meditation"}
-              onClick={() => setActiveCard("meditation")}
-              primaryMinutes={cards.meditation.averageMinutesPerDay}
-              primaryLabel={primaryLabels.averagePerDay}
-              targetMinutes={cards.meditation.targetAverageMinutesPerDay}
-              showTarget={showTargets}
-            />
-          </div>
-
-          <div className="p-4 md:p-6 rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  {React.createElement(CARD_ICONS[activeCard], {
-                    size: 16,
-                    style: { color: CARD_META[activeCard].primaryColor },
-                  })}
-                  {CARD_META[activeCard].label} Trendi
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Kırılım:{" "}
-                  <span className="font-medium text-slate-500">
-                    {BUCKET_LABELS[overview.bucket]}
-                  </span>
-                </p>
-              </div>
-              {bucketOptions && (
-                <SegmentedControl
-                  size="sm"
-                  options={bucketOptions}
-                  value={overview.bucket}
-                  onChange={(id) => setBucket(id)}
-                  ariaLabel="Kırılım seçimi"
-                />
-              )}
-            </div>
-
-            {renderActiveChart()}
-          </div>
-        </>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
+            {CARD_KEYS.map((key) => (
+              <React.Fragment key={key}>
+                <div className={cn("min-h-0 lg:row-start-1", LG_COL_START[key])}>
+                  <SummaryCard
+                    meta={CARD_META[key]}
+                    icon={CARD_ICONS[key]}
+                    isActive={activeCard === key}
+                    onClick={() => setActiveCard(key)}
+                    primaryMinutes={
+                      key === "sport"
+                        ? cards.sport.totalMinutes
+                        : key === "sleep"
+                          ? cards.sleep.averageMinutesPerDay
+                          : key === "deepwork"
+                            ? cards.deepWork.averageMinutesPerDay
+                            : cards.meditation.averageMinutesPerDay
+                    }
+                    primaryLabel={
+                      CARD_META[key].metric === "total"
+                        ? primaryLabels.total
+                        : primaryLabels.averagePerDay
+                    }
+                    targetMinutes={
+                      key === "sport"
+                        ? cards.sport.targetMinutes
+                        : key === "sleep"
+                          ? cards.sleep.targetAverageMinutesPerDay
+                          : key === "deepwork"
+                            ? cards.deepWork.targetAverageMinutesPerDay
+                            : cards.meditation.targetAverageMinutesPerDay
+                    }
+                    showTarget={showTargets}
+                    breakdown={
+                      key === "sport"
+                        ? cards.sport.breakdown
+                        : key === "deepwork"
+                          ? cards.deepWork.breakdown
+                          : undefined
+                    }
+                  />
+                </div>
+                {activeCard === key && renderTrendPanel(key)}
+              </React.Fragment>
+            ))}
+        </div>
       ) : null}
     </div>
   );
