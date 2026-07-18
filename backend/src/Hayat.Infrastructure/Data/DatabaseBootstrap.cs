@@ -101,6 +101,21 @@ namespace Hayat.Infrastructure.Data
                     """);
                 logger?.LogInformation("Created ActiveTimers table (incremental schema).");
             }
+
+            if (!TableExists(context, "RacePrepCounters"))
+            {
+                context.Database.ExecuteSqlRaw("""
+                    CREATE TABLE IF NOT EXISTS "RacePrepCounters" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_RacePrepCounters" PRIMARY KEY AUTOINCREMENT,
+                        "UserId" INTEGER NOT NULL,
+                        "VisualizationCount" INTEGER NOT NULL DEFAULT 0,
+                        "UpdatedAt" TEXT NOT NULL,
+                        CONSTRAINT "FK_RacePrepCounters_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+                    );
+                    CREATE UNIQUE INDEX IF NOT EXISTS "IX_RacePrepCounters_UserId" ON "RacePrepCounters" ("UserId");
+                    """);
+                logger?.LogInformation("Created RacePrepCounters table (incremental schema).");
+            }
         }
 
         private static void EnsureMeditationTypesSchema(AppDbContext context, ILogger? logger)

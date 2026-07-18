@@ -233,3 +233,81 @@ export interface DeepWorkSession {
 }
 
 export type RecordKind = "sleep" | "sport" | "meditation" | "deepwork";
+
+// --- Road to Barcelona 24h ---
+
+export interface RacePrepCountGoal {
+  count: number;
+  target: number;
+  percent: number;
+}
+
+export interface RacePrepTotalVolume {
+  totalKm: number;
+  targetKm: number;
+  percent: number;
+  avgDailyKm: number;
+  projectedKm: number;
+  onTrack: boolean;
+}
+
+export interface RacePrepWeeklyVolume {
+  currentWeekKm: number;
+  weekTargetKm: number;
+  currentWeekPercent: number;
+  achievedWeeks: number;
+  coreWeeks: number;
+  targetWeeks: number;
+  achievedPercent: number;
+}
+
+export interface RacePrepBackToBack {
+  achieved: boolean;
+  occurrences: number;
+  target: number;
+}
+
+export interface RacePrepSpeed {
+  currentWeekCount: number;
+  achievedWeeks: number;
+  coreWeeks: number;
+  targetWeeks: number;
+  percent: number;
+}
+
+export interface RacePrepStrength {
+  currentWeekCount: number;
+  weekTarget: number;
+  currentWeekPercent: number;
+  achievedWeeks: number;
+  totalWeeks: number;
+  targetWeeks: number;
+  percent: number;
+}
+
+export interface RacePrepSleep {
+  avgMinutes: number;
+  targetMinutes: number;
+  percent: number;
+  daysWithData: number;
+}
+
+export interface RacePrepOverview {
+  startDate: string;
+  raceDate: string;
+  totalWeeks: number;
+  currentWeek: number;
+  weekPercent: number;
+  daysToRace: number;
+  started: boolean;
+  totalVolume: RacePrepTotalVolume;
+  weeklyVolume: RacePrepWeeklyVolume;
+  longRuns: RacePrepCountGoal;
+  longerRuns: RacePrepCountGoal;
+  marathonRuns: RacePrepCountGoal;
+  backToBack: RacePrepBackToBack;
+  speed: RacePrepSpeed;
+  strength: RacePrepStrength;
+  sleep: RacePrepSleep;
+  visualization: RacePrepCountGoal;
+}

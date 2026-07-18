@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   PlusCircle,
   CheckSquare,
+  Trophy,
   Settings,
   LogOut,
   Sun,
@@ -17,6 +18,7 @@ const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/log", label: "Olaylar", icon: PlusCircle },
   { to: "/habits", label: "Alışkanlıklar", icon: CheckSquare },
+  { to: "/race", label: "Barcelona 24h", icon: Trophy },
   { to: "/management", label: "Yönetim", icon: Settings },
 ];
 
