@@ -12,6 +12,8 @@ import type {
   HabitAnalytics,
   LookupType,
   MeditationSession,
+  RacePrepCountGoal,
+  RacePrepOverview,
   SleepLog,
   SportActivity,
   StravaConnectionStatus,
@@ -147,6 +149,12 @@ export const healthApi = {
     data: { date: string; durationMinutes: number; meditationTypeId: number }
   ) => apiClient.put(`/health/meditation/${id}`, data),
   deleteMeditation: (id: number) => apiClient.delete(`/health/meditation/${id}`),
+};
+
+export const racePrepApi = {
+  getOverview: () => apiClient.get<RacePrepOverview>("/race-prep/overview"),
+  incrementVisualization: () =>
+    apiClient.post<RacePrepCountGoal>("/race-prep/visualization/increment"),
 };
 
 export const activeTimerApi = {

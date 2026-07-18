@@ -174,11 +174,14 @@ namespace Hayat.Infrastructure.Services
                 .OrderByDescending(b => b.Minutes)
                 .ToList();
 
+            // Daily averages exclude days with no logged data (otherwise empty days drag the average down).
             var sleepTotal = sleepRows.Sum(s => s.Minutes);
-            var sleepAvg = daysElapsed > 0 ? sleepTotal / daysElapsed : 0;
+            var sleepDaysWithData = sleepRows.Select(s => s.Date).Distinct().Count();
+            var sleepAvg = sleepDaysWithData > 0 ? sleepTotal / sleepDaysWithData : 0;
 
             var deepWorkTotal = deepWorkRows.Sum(s => s.DurationMinutes);
-            var deepWorkAvg = daysElapsed > 0 ? deepWorkTotal / daysElapsed : 0;
+            var deepWorkDaysWithData = deepWorkRows.Select(s => s.Date).Distinct().Count();
+            var deepWorkAvg = deepWorkDaysWithData > 0 ? deepWorkTotal / deepWorkDaysWithData : 0;
             var deepWorkBreakdown = deepWorkRows
                 .GroupBy(s => s.TypeName)
                 .Select(g => new CategoryBreakdownItemDto(g.Key, g.Sum(x => x.DurationMinutes)))
@@ -186,7 +189,8 @@ namespace Hayat.Infrastructure.Services
                 .ToList();
 
             var meditationTotal = meditationRows.Sum(s => s.DurationMinutes);
-            var meditationAvg = daysElapsed > 0 ? meditationTotal / daysElapsed : 0;
+            var meditationDaysWithData = meditationRows.Select(s => s.Date).Distinct().Count();
+            var meditationAvg = meditationDaysWithData > 0 ? meditationTotal / meditationDaysWithData : 0;
 
             int? sleepTarget = null, sportTarget = null, deepWorkTarget = null, meditationTarget = null;
             if (showTargets)
@@ -304,9 +308,6 @@ namespace Hayat.Infrastructure.Services
             return result;
         }
 
-        private static int BucketDayCount(BucketDef bucket) =>
-            bucket.End.DayNumber - bucket.Start.DayNumber + 1;
-
         private static int ToChartMinutes(int totalMinutes, int dayCount, bool perDayAverage) =>
             perDayAverage && dayCount > 0 ? totalMinutes / dayCount : totalMinutes;
 
@@ -318,11 +319,14 @@ namespace Hayat.Infrastructure.Services
             var dataList = data.ToList();
             return buckets.Select(b =>
             {
-                var total = dataList.Where(d => d.Date >= b.Start && d.Date <= b.End).Sum(d => d.Minutes);
+                var inRange = dataList.Where(d => d.Date >= b.Start && d.Date <= b.End).ToList();
+                var total = inRange.Sum(d => d.Minutes);
+                // Average only over days that have data in this bucket.
+                var dayCount = inRange.Select(d => d.Date).Distinct().Count();
                 return new TimeBucketValueDto(
                     b.Key,
                     b.Label,
-                    ToChartMinutes(total, BucketDayCount(b), perDayAverage));
+                    ToChartMinutes(total, dayCount, perDayAverage));
             }).ToList();
         }
 
@@ -343,7 +347,8 @@ namespace Hayat.Infrastructure.Services
             var stackedBuckets = buckets.Select(b =>
             {
                 var inRange = dataList.Where(d => d.Date >= b.Start && d.Date <= b.End).ToList();
-                var dayCount = BucketDayCount(b);
+                // Average only over days that have data in this bucket (empty days excluded).
+                var dayCount = inRange.Select(d => d.Date).Distinct().Count();
                 var segments = new Dictionary<string, int>();
                 foreach (var cat in categories)
                 {

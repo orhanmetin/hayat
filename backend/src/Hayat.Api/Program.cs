@@ -103,6 +103,7 @@ builder.Services.AddScoped<IWeeklyGoalService, WeeklyGoalService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IAnecdoteService, AnecdoteService>();
 builder.Services.AddScoped<IActiveTimerService, ActiveTimerService>();
+builder.Services.AddScoped<IRacePrepService, RacePrepService>();
 
 var app = builder.Build();
 

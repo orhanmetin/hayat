@@ -28,6 +28,7 @@ namespace Hayat.Infrastructure.Data
         public DbSet<UserStravaConnection> UserStravaConnections => Set<UserStravaConnection>();
         public DbSet<Anecdote> Anecdotes => Set<Anecdote>();
         public DbSet<ActiveTimer> ActiveTimers => Set<ActiveTimer>();
+        public DbSet<RacePrepCounter> RacePrepCounters => Set<RacePrepCounter>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -138,6 +139,13 @@ namespace Hayat.Infrastructure.Data
             });
 
             modelBuilder.Entity<ActiveTimer>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.HasIndex(x => x.UserId).IsUnique();
+                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<RacePrepCounter>(e =>
             {
                 e.HasKey(x => x.Id);
                 e.HasIndex(x => x.UserId).IsUnique();
