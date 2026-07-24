@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { X, Link2 } from "lucide-react";
 import { deepWorkApi, healthApi } from "../../services/modules";
+import { pusulaApi } from "../../services/pusula";
 import { DurationMinutesInput } from "../ui/DurationMinutesInput";
 import { formatMinutes, parseApiDateTime } from "../../lib/format";
 import {
@@ -9,6 +10,7 @@ import {
   elapsedMinutesCeil,
 } from "../../lib/activeTimerStorage";
 import type { LookupType } from "../../types/modules";
+import type { PusulaTask } from "../../types/pusula";
 import { cn } from "../../lib/utils";
 
 export type TimerActivityKind = "deepwork" | "meditation";
@@ -39,6 +41,11 @@ export const ActiveTimerSaveModal: React.FC<ActiveTimerSaveModalProps> = ({
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [linkTask, setLinkTask] = useState(false);
+  const [dayTasks, setDayTasks] = useState<PusulaTask[]>([]);
+  const [dayTasksLoading, setDayTasksLoading] = useState(false);
+  const [linkedTaskId, setLinkedTaskId] = useState<number | null>(null);
+  const [markTaskCompleted, setMarkTaskCompleted] = useState(true);
 
   useEffect(() => {
     if (deepWorkTypes[0]) setDeepWorkTypeId(deepWorkTypes[0].id);
@@ -58,6 +65,20 @@ export const ActiveTimerSaveModal: React.FC<ActiveTimerSaveModalProps> = ({
   }, []);
 
   const logDate = dateIsoFromStart(startTime);
+
+  useEffect(() => {
+    if (!linkTask || dayTasks.length > 0) return;
+    setDayTasksLoading(true);
+    pusulaApi
+      .getDays(logDate)
+      .then((res) => {
+        const tasks = (res.data[0]?.tasks ?? []).filter((t) => t.status !== "completed");
+        setDayTasks(tasks);
+        if (tasks[0]) setLinkedTaskId(tasks[0].id);
+      })
+      .catch(() => setDayTasks([]))
+      .finally(() => setDayTasksLoading(false));
+  }, [linkTask, logDate, dayTasks.length]);
   const startedLabel = parseApiDateTime(startTime).toLocaleString("tr-TR", {
     day: "2-digit",
     month: "2-digit",
@@ -87,6 +108,13 @@ export const ActiveTimerSaveModal: React.FC<ActiveTimerSaveModalProps> = ({
           meditationTypeId,
           date: logDate,
           durationMinutes,
+        });
+      }
+      if (linkTask && linkedTaskId) {
+        await pusulaApi.setStatus(linkedTaskId, {
+          date: logDate,
+          status: markTaskCompleted ? "completed" : undefined,
+          actualMinutes: durationMinutes,
         });
       }
       onSaved();
@@ -192,6 +220,57 @@ export const ActiveTimerSaveModal: React.FC<ActiveTimerSaveModalProps> = ({
               />
             </div>
           )}
+
+          <div className="rounded-xl border border-slate-200 dark:border-white/10 p-3 space-y-3">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={linkTask}
+                onChange={(e) => setLinkTask(e.target.checked)}
+                className="w-4 h-4 accent-[#5f7a61]"
+              />
+              <span className="flex items-center gap-1.5 text-sm font-medium">
+                <Link2 size={15} className="text-primary" />
+                Görevle İlişkilendir (Pusula)
+              </span>
+            </label>
+
+            {linkTask &&
+              (dayTasksLoading ? (
+                <p className="text-xs text-slate-400">Görevler yükleniyor…</p>
+              ) : dayTasks.length === 0 ? (
+                <p className="text-xs text-slate-400">Bu gün için açık görev yok.</p>
+              ) : (
+                <>
+                  <select
+                    value={linkedTaskId ?? ""}
+                    onChange={(e) =>
+                      setLinkedTaskId(e.target.value ? Number(e.target.value) : null)
+                    }
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent text-sm"
+                  >
+                    {dayTasks.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.title}
+                        {t.categoryName ? ` (${t.categoryName})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={markTaskCompleted}
+                      onChange={(e) => setMarkTaskCompleted(e.target.checked)}
+                      className="w-4 h-4 accent-[#5f7a61]"
+                    />
+                    <span className="text-xs text-slate-500">
+                      Görevi <strong>Tamamlandı</strong> olarak işaretle (gerçekleşen süre:{" "}
+                      {formatMinutes(durationMinutes)})
+                    </span>
+                  </label>
+                </>
+              ))}
+          </div>
 
           {error && <p className="text-sm text-red-500">{error}</p>}
 

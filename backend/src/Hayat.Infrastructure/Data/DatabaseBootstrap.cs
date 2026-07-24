@@ -116,6 +116,87 @@ namespace Hayat.Infrastructure.Data
                     """);
                 logger?.LogInformation("Created RacePrepCounters table (incremental schema).");
             }
+
+            if (!TableExists(context, "PusulaTasks"))
+            {
+                context.Database.ExecuteSqlRaw("""
+                    CREATE TABLE IF NOT EXISTS "PusulaCategories" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_PusulaCategories" PRIMARY KEY AUTOINCREMENT,
+                        "UserId" INTEGER NOT NULL,
+                        "Name" TEXT NOT NULL,
+                        "ParentId" INTEGER NULL,
+                        "SortOrder" INTEGER NOT NULL DEFAULT 0,
+                        "IsActive" INTEGER NOT NULL DEFAULT 1,
+                        CONSTRAINT "FK_PusulaCategories_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+                        CONSTRAINT "FK_PusulaCategories_PusulaCategories_ParentId" FOREIGN KEY ("ParentId") REFERENCES "PusulaCategories" ("Id") ON DELETE RESTRICT
+                    );
+                    CREATE INDEX IF NOT EXISTS "IX_PusulaCategories_UserId_ParentId" ON "PusulaCategories" ("UserId", "ParentId");
+
+                    CREATE TABLE IF NOT EXISTS "PusulaTasks" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_PusulaTasks" PRIMARY KEY AUTOINCREMENT,
+                        "UserId" INTEGER NOT NULL,
+                        "CategoryId" INTEGER NULL,
+                        "Title" TEXT NOT NULL,
+                        "Note" TEXT NULL,
+                        "Date" TEXT NOT NULL,
+                        "TimeOfDay" TEXT NULL,
+                        "EstimatedMinutes" INTEGER NULL,
+                        "ActualMinutes" INTEGER NULL,
+                        "Priority" INTEGER NOT NULL DEFAULT 3,
+                        "ManualScore" INTEGER NULL,
+                        "Recurrence" INTEGER NOT NULL DEFAULT 0,
+                        "RecurrenceDay" INTEGER NULL,
+                        "WorkType" INTEGER NOT NULL DEFAULT 0,
+                        "Status" INTEGER NOT NULL DEFAULT 0,
+                        "CompletedAt" TEXT NULL,
+                        "CreatedAt" TEXT NOT NULL,
+                        CONSTRAINT "FK_PusulaTasks_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+                        CONSTRAINT "FK_PusulaTasks_PusulaCategories_CategoryId" FOREIGN KEY ("CategoryId") REFERENCES "PusulaCategories" ("Id") ON DELETE SET NULL
+                    );
+                    CREATE INDEX IF NOT EXISTS "IX_PusulaTasks_UserId_Date" ON "PusulaTasks" ("UserId", "Date");
+
+                    CREATE TABLE IF NOT EXISTS "PusulaTaskSteps" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_PusulaTaskSteps" PRIMARY KEY AUTOINCREMENT,
+                        "TaskId" INTEGER NOT NULL,
+                        "Title" TEXT NOT NULL,
+                        "SortOrder" INTEGER NOT NULL DEFAULT 0,
+                        CONSTRAINT "FK_PusulaTaskSteps_PusulaTasks_TaskId" FOREIGN KEY ("TaskId") REFERENCES "PusulaTasks" ("Id") ON DELETE CASCADE
+                    );
+                    CREATE INDEX IF NOT EXISTS "IX_PusulaTaskSteps_TaskId" ON "PusulaTaskSteps" ("TaskId");
+
+                    CREATE TABLE IF NOT EXISTS "PusulaStepChecks" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_PusulaStepChecks" PRIMARY KEY AUTOINCREMENT,
+                        "StepId" INTEGER NOT NULL,
+                        "Date" TEXT NOT NULL,
+                        CONSTRAINT "FK_PusulaStepChecks_PusulaTaskSteps_StepId" FOREIGN KEY ("StepId") REFERENCES "PusulaTaskSteps" ("Id") ON DELETE CASCADE
+                    );
+                    CREATE UNIQUE INDEX IF NOT EXISTS "IX_PusulaStepChecks_StepId_Date" ON "PusulaStepChecks" ("StepId", "Date");
+
+                    CREATE TABLE IF NOT EXISTS "PusulaOccurrences" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_PusulaOccurrences" PRIMARY KEY AUTOINCREMENT,
+                        "TaskId" INTEGER NOT NULL,
+                        "Date" TEXT NOT NULL,
+                        "Status" INTEGER NOT NULL DEFAULT 0,
+                        "ActualMinutes" INTEGER NULL,
+                        "CompletedAt" TEXT NULL,
+                        CONSTRAINT "FK_PusulaOccurrences_PusulaTasks_TaskId" FOREIGN KEY ("TaskId") REFERENCES "PusulaTasks" ("Id") ON DELETE CASCADE
+                    );
+                    CREATE UNIQUE INDEX IF NOT EXISTS "IX_PusulaOccurrences_TaskId_Date" ON "PusulaOccurrences" ("TaskId", "Date");
+
+                    CREATE TABLE IF NOT EXISTS "PusulaDayReviews" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_PusulaDayReviews" PRIMARY KEY AUTOINCREMENT,
+                        "UserId" INTEGER NOT NULL,
+                        "Date" TEXT NOT NULL,
+                        "StartVision" TEXT NULL,
+                        "EndReflection" TEXT NULL,
+                        "FeelingScore" INTEGER NULL,
+                        "UpdatedAt" TEXT NOT NULL,
+                        CONSTRAINT "FK_PusulaDayReviews_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+                    );
+                    CREATE UNIQUE INDEX IF NOT EXISTS "IX_PusulaDayReviews_UserId_Date" ON "PusulaDayReviews" ("UserId", "Date");
+                    """);
+                logger?.LogInformation("Created Pusula tables (incremental schema).");
+            }
         }
 
         private static void EnsureMeditationTypesSchema(AppDbContext context, ILogger? logger)

@@ -104,6 +104,7 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IAnecdoteService, AnecdoteService>();
 builder.Services.AddScoped<IActiveTimerService, ActiveTimerService>();
 builder.Services.AddScoped<IRacePrepService, RacePrepService>();
+builder.Services.AddScoped<IPusulaService, PusulaService>();
 
 var app = builder.Build();
 

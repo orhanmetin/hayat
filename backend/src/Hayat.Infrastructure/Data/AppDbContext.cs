@@ -29,6 +29,12 @@ namespace Hayat.Infrastructure.Data
         public DbSet<Anecdote> Anecdotes => Set<Anecdote>();
         public DbSet<ActiveTimer> ActiveTimers => Set<ActiveTimer>();
         public DbSet<RacePrepCounter> RacePrepCounters => Set<RacePrepCounter>();
+        public DbSet<PusulaCategory> PusulaCategories => Set<PusulaCategory>();
+        public DbSet<PusulaTask> PusulaTasks => Set<PusulaTask>();
+        public DbSet<PusulaTaskStep> PusulaTaskSteps => Set<PusulaTaskStep>();
+        public DbSet<PusulaStepCheck> PusulaStepChecks => Set<PusulaStepCheck>();
+        public DbSet<PusulaOccurrence> PusulaOccurrences => Set<PusulaOccurrence>();
+        public DbSet<PusulaDayReview> PusulaDayReviews => Set<PusulaDayReview>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -149,6 +155,55 @@ namespace Hayat.Infrastructure.Data
             {
                 e.HasKey(x => x.Id);
                 e.HasIndex(x => x.UserId).IsUnique();
+                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PusulaCategory>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Name).HasMaxLength(80).IsRequired();
+                e.HasIndex(x => new { x.UserId, x.ParentId });
+                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(x => x.Parent).WithMany(c => c.Children).HasForeignKey(x => x.ParentId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<PusulaTask>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Title).HasMaxLength(300).IsRequired();
+                e.Property(x => x.Note).HasMaxLength(2000);
+                e.HasIndex(x => new { x.UserId, x.Date });
+                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(x => x.Category).WithMany().HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<PusulaTaskStep>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Title).HasMaxLength(300).IsRequired();
+                e.HasOne(x => x.Task).WithMany(t => t.Steps).HasForeignKey(x => x.TaskId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PusulaStepCheck>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.HasIndex(x => new { x.StepId, x.Date }).IsUnique();
+                e.HasOne(x => x.Step).WithMany(s => s.Checks).HasForeignKey(x => x.StepId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PusulaOccurrence>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.HasIndex(x => new { x.TaskId, x.Date }).IsUnique();
+                e.HasOne(x => x.Task).WithMany(t => t.Occurrences).HasForeignKey(x => x.TaskId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PusulaDayReview>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.HasIndex(x => new { x.UserId, x.Date }).IsUnique();
+                e.Property(x => x.StartVision).HasMaxLength(4000);
+                e.Property(x => x.EndReflection).HasMaxLength(4000);
                 e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
         }
