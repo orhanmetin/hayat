@@ -150,6 +150,7 @@ namespace Hayat.Infrastructure.Data
                         "Status" INTEGER NOT NULL DEFAULT 0,
                         "CompletedAt" TEXT NULL,
                         "CreatedAt" TEXT NOT NULL,
+                        "SortOrder" INTEGER NOT NULL DEFAULT 0,
                         CONSTRAINT "FK_PusulaTasks_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
                         CONSTRAINT "FK_PusulaTasks_PusulaCategories_CategoryId" FOREIGN KEY ("CategoryId") REFERENCES "PusulaCategories" ("Id") ON DELETE SET NULL
                     );
@@ -196,6 +197,14 @@ namespace Hayat.Infrastructure.Data
                     CREATE UNIQUE INDEX IF NOT EXISTS "IX_PusulaDayReviews_UserId_Date" ON "PusulaDayReviews" ("UserId", "Date");
                     """);
                 logger?.LogInformation("Created Pusula tables (incremental schema).");
+            }
+
+            if (TableExists(context, "PusulaTasks") && !ColumnExists(context, "PusulaTasks", "SortOrder"))
+            {
+                context.Database.ExecuteSqlRaw("""
+                    ALTER TABLE "PusulaTasks" ADD COLUMN "SortOrder" INTEGER NOT NULL DEFAULT 0;
+                    """);
+                logger?.LogInformation("Added SortOrder to PusulaTasks.");
             }
         }
 

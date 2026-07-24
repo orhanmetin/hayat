@@ -31,6 +31,7 @@ namespace Hayat.Application.DTOs
         int Score,
         string Status,
         double EarnedPoints,
+        int SortOrder,
         IReadOnlyList<PusulaStepDto> Steps);
 
     public record PusulaDayDto(
@@ -73,6 +74,7 @@ namespace Hayat.Application.DTOs
 
     public record PusulaTaskStatusRequest(DateOnly Date, string? Status, int? ActualMinutes);
     public record PusulaScheduleRequest(DateOnly? Date, string? TimeOfDay);
+    public record PusulaReorderRequest(DateOnly Date, List<int> TaskIds);
     public record CreatePusulaStepRequest(string Title);
     public record PusulaStepToggleRequest(DateOnly Date);
 

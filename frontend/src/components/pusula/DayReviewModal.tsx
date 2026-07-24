@@ -3,9 +3,19 @@ import { createPortal } from "react-dom";
 import { X, Sunrise, Sunset, Star } from "lucide-react";
 import { pusulaApi } from "../../services/pusula";
 import type { PusulaDay } from "../../types/pusula";
+import { DatePickerTurkish } from "../ui/DatePickerTurkish";
 import { cn } from "../../lib/utils";
 
 type ReviewMode = "start" | "end";
+
+function isoToLocalDate(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1, 12, 0, 0);
+}
+
+function localDateToIso(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
 
 interface DayReviewModalProps {
   initialDate: string;
@@ -107,11 +117,9 @@ export const DayReviewModal: React.FC<DayReviewModalProps> = ({ initialDate, onC
         <div className="p-4 space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-500 mb-1.5">Tarih</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent text-sm"
+            <DatePickerTurkish
+              value={isoToLocalDate(date)}
+              onChange={(d) => setDate(localDateToIso(d))}
             />
           </div>
 
@@ -179,7 +187,7 @@ export const DayReviewModal: React.FC<DayReviewModalProps> = ({ initialDate, onC
 
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-                  Gün genel olarak nasıl geçti? (hissiyat puanı)
+                  Gün Nasıldı?
                 </label>
                 <div className="flex gap-1.5 justify-center py-1">
                   {[1, 2, 3, 4, 5].map((n) => (
@@ -206,7 +214,7 @@ export const DayReviewModal: React.FC<DayReviewModalProps> = ({ initialDate, onC
 
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-                  Günün değerlendirmesi — yorum ve analizlerim
+                  Günün Değerlendirmesi
                 </label>
                 <textarea
                   value={endReflection}

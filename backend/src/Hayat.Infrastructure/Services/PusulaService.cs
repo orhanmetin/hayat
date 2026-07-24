@@ -142,6 +142,9 @@ namespace Hayat.Infrastructure.Services
 
             var date = request.Date ?? AppTime.Today;
             var recurrence = RecurrenceFromString(request.Recurrence);
+            var maxSort = await _db.PusulaTasks
+                .Where(t => t.UserId == userId)
+                .MaxAsync(t => (int?)t.SortOrder) ?? 0;
             var task = new PusulaTask
             {
                 UserId = userId,
@@ -161,7 +164,8 @@ namespace Hayat.Infrastructure.Services
                     : null,
                 WorkType = WorkTypeFromString(request.WorkType),
                 Status = PusulaTask.StatusPending,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                SortOrder = maxSort + 1
             };
 
             var stepTitles = (request.Steps ?? new List<string>())
@@ -267,6 +271,27 @@ namespace Hayat.Infrastructure.Services
 
             await _db.SaveChangesAsync();
             return await GetTaskDtoAsync(userId, task.Id, task.Date);
+        }
+
+        public async Task<bool> ReorderTasksAsync(int userId, PusulaReorderRequest request)
+        {
+            if (request.TaskIds == null || request.TaskIds.Count == 0) return false;
+
+            var tasks = await _db.PusulaTasks
+                .Where(t => t.UserId == userId && request.TaskIds.Contains(t.Id))
+                .ToListAsync();
+            if (tasks.Count == 0) return false;
+
+            var order = 1;
+            foreach (var id in request.TaskIds)
+            {
+                var task = tasks.FirstOrDefault(t => t.Id == id);
+                if (task == null) continue;
+                task.SortOrder = order++;
+            }
+
+            await _db.SaveChangesAsync();
+            return true;
         }
 
         // ---------- Steps ----------
@@ -438,7 +463,9 @@ namespace Hayat.Infrastructure.Services
             var dayTasks = tasks
                 .Where(t => OccursOn(t, date))
                 .Select(t => MapTask(t, date))
-                .OrderBy(t => t.TimeOfDay == null ? 1 : 0)
+                .OrderBy(t => t.Status == "completed" ? 1 : 0)
+                .ThenBy(t => t.SortOrder)
+                .ThenBy(t => t.TimeOfDay == null ? 1 : 0)
                 .ThenBy(t => t.TimeOfDay)
                 .ThenBy(t => t.Priority)
                 .ToList();
@@ -514,6 +541,7 @@ namespace Hayat.Infrastructure.Services
                 score,
                 status,
                 Math.Round(earned, 1),
+                task.SortOrder,
                 steps);
         }
 

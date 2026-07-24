@@ -360,7 +360,8 @@ export const PusulaReportsPage: React.FC = () => {
                   </p>
                   <p className="text-[11px] text-slate-400">
                     {new Date(`${t.dayDate}T12:00:00`).toLocaleDateString("tr-TR")}
-                    {t.categoryName ? ` · ${t.categoryName}` : ""} · P{t.priority}
+                    {t.categoryName ? ` · ${t.categoryName}` : ""} ·{" "}
+                    {t.priority === 1 ? "High" : t.priority === 2 ? "Mid" : "Low"}
                   </p>
                 </div>
                 <span className="text-xs font-bold text-slate-500 shrink-0">

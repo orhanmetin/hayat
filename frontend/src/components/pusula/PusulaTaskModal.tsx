@@ -9,9 +9,38 @@ import type {
   PusulaTask,
   PusulaWorkType,
 } from "../../types/pusula";
+import { TimePickerDropdown } from "../ui/TimePickerDropdown";
+import { DatePickerTurkish } from "../ui/DatePickerTurkish";
 import { cn } from "../../lib/utils";
 
 const DAY_NAMES = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+
+const PRIORITY_OPTIONS = [
+  { value: 1, label: "High" },
+  { value: 2, label: "Mid" },
+  { value: 3, label: "Low" },
+] as const;
+
+function parseTimeOfDay(value: string): { hours: number; minutes: number } {
+  const [h, m] = value.split(":").map(Number);
+  return {
+    hours: Number.isFinite(h) ? h : 9,
+    minutes: Number.isFinite(m) ? m : 0,
+  };
+}
+
+function formatTimeOfDay(hours: number, minutes: number): string {
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function isoToLocalDate(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1, 12, 0, 0);
+}
+
+function localDateToIso(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
 
 function todayIso(): string {
   return new Date().toLocaleDateString("sv-SE");
@@ -185,7 +214,7 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Detaylı açıklama (opsiyonel)"
+              placeholder=""
               rows={2}
               className={inputClass}
             />
@@ -237,11 +266,9 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
                   {q.label}
                 </button>
               ))}
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="px-3 py-2 rounded-xl text-xs border border-slate-200 dark:border-white/10 bg-transparent"
+              <DatePickerTurkish
+                value={isoToLocalDate(date)}
+                onChange={(d) => setDate(localDateToIso(d))}
               />
             </div>
           </div>
@@ -250,12 +277,31 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
             {recurrence === "none" && (
               <div>
                 <label className={labelClass}>Saat</label>
-                <input
-                  type="time"
-                  value={timeOfDay}
-                  onChange={(e) => setTimeOfDay(e.target.value)}
-                  className={inputClass}
-                />
+                {timeOfDay ? (
+                  <div className="space-y-1.5">
+                    <TimePickerDropdown
+                      hours={parseTimeOfDay(timeOfDay).hours}
+                      minutes={parseTimeOfDay(timeOfDay).minutes}
+                      minuteStep={5}
+                      onChange={(h, m) => setTimeOfDay(formatTimeOfDay(h, m))}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setTimeOfDay("")}
+                      className="text-[11px] text-slate-400 hover:text-slate-600"
+                    >
+                      Saati kaldır
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setTimeOfDay("09:00")}
+                    className={cn(inputClass, "text-left text-slate-400")}
+                  >
+                    Saat seç (00–23)
+                  </button>
+                )}
               </div>
             )}
             <div>
@@ -287,23 +333,23 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
           <div>
             <label className={labelClass}>Öncelik</label>
             <div className="grid grid-cols-3 gap-2">
-              {[1, 2, 3].map((p) => (
+              {PRIORITY_OPTIONS.map((opt) => (
                 <button
-                  key={p}
+                  key={opt.value}
                   type="button"
-                  onClick={() => setPriority(p)}
+                  onClick={() => setPriority(opt.value)}
                   className={cn(
                     "py-2.5 rounded-xl text-sm font-bold border transition-colors",
-                    priority === p
-                      ? p === 1
+                    priority === opt.value
+                      ? opt.value === 1
                         ? "bg-red-500 text-white border-red-500"
-                        : p === 2
+                        : opt.value === 2
                           ? "bg-amber-500 text-white border-amber-500"
                           : "bg-sky-500 text-white border-sky-500"
                       : "border-slate-200 dark:border-white/10 text-slate-500"
                   )}
                 >
-                  P{p}
+                  {opt.label}
                 </button>
               ))}
             </div>
@@ -387,7 +433,9 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
               <span className="text-slate-600 dark:text-slate-300">Önerilen puan: </span>
               <strong>{autoScore}</strong>
               <span className="text-xs text-slate-400 ml-2">
-                (P{priority} × {estimatedMinutes ? `${estimatedMinutes}dk/15` : "1 birim"})
+                (
+                {PRIORITY_OPTIONS.find((o) => o.value === priority)?.label ?? "Low"} ×{" "}
+                {estimatedMinutes ? `${estimatedMinutes}dk/15` : "1 birim"})
               </span>
             </div>
             <div className="flex items-center gap-2">

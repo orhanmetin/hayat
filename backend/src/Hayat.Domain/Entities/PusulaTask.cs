@@ -48,6 +48,8 @@ namespace Hayat.Domain.Entities
         public int Status { get; set; } = StatusPending;
         public DateTime? CompletedAt { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        /// <summary>Manual list order (lower = higher in list).</summary>
+        public int SortOrder { get; set; }
 
         public List<PusulaTaskStep> Steps { get; set; } = new();
         public List<PusulaOccurrence> Occurrences { get; set; } = new();

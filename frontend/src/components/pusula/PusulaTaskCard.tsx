@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  GripVertical,
   Pencil,
   Plus,
   Repeat,
@@ -21,12 +22,25 @@ const PRIORITY_STYLES: Record<number, string> = {
   3: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
 };
 
+const PRIORITY_LABELS: Record<number, string> = {
+  1: "High",
+  2: "Mid",
+  3: "Low",
+};
+
 interface PusulaTaskCardProps {
   task: PusulaTask;
   date: string;
   onChanged: (task: PusulaTask) => void;
   onDeleted: (taskId: number) => void;
   onEdit: (task: PusulaTask) => void;
+  draggable?: boolean;
+  isDragging?: boolean;
+  isDropTarget?: boolean;
+  onDragStart?: (taskId: number) => void;
+  onDragOver?: (taskId: number) => void;
+  onDrop?: (taskId: number) => void;
+  onDragEnd?: () => void;
 }
 
 export const PusulaTaskCard: React.FC<PusulaTaskCardProps> = ({
@@ -35,6 +49,13 @@ export const PusulaTaskCard: React.FC<PusulaTaskCardProps> = ({
   onChanged,
   onDeleted,
   onEdit,
+  draggable = false,
+  isDragging = false,
+  isDropTarget = false,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [stepDraft, setStepDraft] = useState("");
@@ -86,16 +107,52 @@ export const PusulaTaskCard: React.FC<PusulaTaskCardProps> = ({
 
   return (
     <div
+      onDragOver={
+        draggable
+          ? (e) => {
+              e.preventDefault();
+              onDragOver?.(task.id);
+            }
+          : undefined
+      }
+      onDrop={
+        draggable
+          ? (e) => {
+              e.preventDefault();
+              onDrop?.(task.id);
+            }
+          : undefined
+      }
       className={cn(
         "rounded-2xl border p-3.5 transition-colors",
         completed
           ? "bg-emerald-500/5 border-emerald-500/20"
           : notDone
             ? "bg-red-500/5 border-red-500/15"
-            : "bg-white dark:bg-black/20 border-slate-200 dark:border-white/5"
+            : "bg-white dark:bg-black/20 border-slate-200 dark:border-white/5",
+        isDragging && "opacity-40",
+        isDropTarget && "ring-2 ring-primary/40 border-primary/40"
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2">
+        {draggable && (
+          <button
+            type="button"
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("text/pusula-list-task", String(task.id));
+              onDragStart?.(task.id);
+            }}
+            onDragEnd={onDragEnd}
+            className="mt-0.5 p-1 rounded-lg text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing shrink-0 touch-none"
+            aria-label="Sürükle"
+            title="Sürükleyerek sırala"
+          >
+            <GripVertical size={16} />
+          </button>
+        )}
+
         <button
           type="button"
           onClick={toggleStatus}
@@ -113,14 +170,16 @@ export const PusulaTaskCard: React.FC<PusulaTaskCardProps> = ({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <p
+            <button
+              type="button"
+              onClick={() => onEdit(task)}
               className={cn(
-                "font-medium text-sm leading-snug",
+                "font-medium text-sm leading-snug text-left hover:text-primary transition-colors",
                 completed && "line-through text-slate-400"
               )}
             >
               {task.title}
-            </p>
+            </button>
             <span
               className={cn(
                 "shrink-0 px-2 py-0.5 rounded-lg text-xs font-bold",
@@ -136,7 +195,7 @@ export const PusulaTaskCard: React.FC<PusulaTaskCardProps> = ({
 
           <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[11px]">
             <span className={cn("px-1.5 py-0.5 rounded-md font-bold", PRIORITY_STYLES[task.priority])}>
-              P{task.priority}
+              {PRIORITY_LABELS[task.priority] ?? "Low"}
             </span>
             {task.categoryName && (
               <span className="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400">

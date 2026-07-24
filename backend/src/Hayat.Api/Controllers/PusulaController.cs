@@ -108,6 +108,16 @@ namespace Hayat.Api.Controllers
             return result == null ? NotFound() : Ok(result);
         }
 
+        [HttpPost("tasks/reorder")]
+        public async Task<IActionResult> Reorder([FromBody] PusulaReorderRequest request)
+        {
+            var userId = GetUserId();
+            if (userId == null) return UnauthorizedUser();
+            return await _service.ReorderTasksAsync(userId.Value, request)
+                ? NoContent()
+                : BadRequest(new { message = "Sıralama güncellenemedi." });
+        }
+
         // ---- Steps ----
 
         [HttpPost("tasks/{id:int}/steps")]

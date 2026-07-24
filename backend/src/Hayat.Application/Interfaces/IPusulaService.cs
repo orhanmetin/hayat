@@ -20,6 +20,7 @@ namespace Hayat.Application.Interfaces
         Task<bool> DeleteTaskAsync(int userId, int id);
         Task<PusulaTaskDto?> SetTaskStatusAsync(int userId, int id, PusulaTaskStatusRequest request);
         Task<PusulaTaskDto?> ScheduleTaskAsync(int userId, int id, PusulaScheduleRequest request);
+        Task<bool> ReorderTasksAsync(int userId, PusulaReorderRequest request);
 
         // Steps
         Task<PusulaTaskDto?> AddStepAsync(int userId, int taskId, CreatePusulaStepRequest request, DateOnly date);

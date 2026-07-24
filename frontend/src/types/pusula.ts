@@ -37,6 +37,7 @@ export interface PusulaTask {
   score: number;
   status: PusulaStatus;
   earnedPoints: number;
+  sortOrder: number;
   steps: PusulaStep[];
 }
 

@@ -6,8 +6,6 @@ import {
   ClipboardList,
   Plus,
   BarChart3,
-  CalendarDays,
-  List,
   Sunrise,
 } from "lucide-react";
 import { pusulaApi } from "../services/pusula";
@@ -18,8 +16,14 @@ import { PusulaCalendar } from "../components/pusula/PusulaCalendar";
 import { DayReviewModal } from "../components/pusula/DayReviewModal";
 import { SegmentedControl } from "../components/dashboard/SegmentedControl";
 
-type SortKey = "time" | "priority" | "category";
+type SortKey = "manual" | "time" | "priority" | "category";
 type ViewKey = "list" | "day" | "week";
+
+function completedLast(a: PusulaTask, b: PusulaTask): number {
+  const aDone = a.status === "completed" ? 1 : 0;
+  const bDone = b.status === "completed" ? 1 : 0;
+  return aDone - bDone;
+}
 
 function todayIso(): string {
   return new Date().toLocaleDateString("sv-SE");
@@ -51,10 +55,12 @@ export const PusulaPage: React.FC = () => {
   const [categories, setCategories] = useState<PusulaCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("time");
+  const [sortKey, setSortKey] = useState<SortKey>("manual");
   const [view, setView] = useState<ViewKey>("list");
   const [quickTitle, setQuickTitle] = useState("");
   const [quickAdding, setQuickAdding] = useState(false);
+  const [dragTaskId, setDragTaskId] = useState<number | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<number | null>(null);
   const [taskModal, setTaskModal] = useState<{ open: boolean; task: PusulaTask | null }>({
     open: false,
     task: null,
@@ -92,23 +98,83 @@ export const PusulaPage: React.FC = () => {
   const sortedTasks = useMemo(() => {
     if (!day) return [];
     const tasks = [...day.tasks];
+    const byStatusThen = (cmp: (a: PusulaTask, b: PusulaTask) => number) =>
+      tasks.sort((a, b) => completedLast(a, b) || cmp(a, b));
+
     switch (sortKey) {
       case "priority":
-        return tasks.sort((a, b) => a.priority - b.priority || b.score - a.score);
+        return byStatusThen((a, b) => a.priority - b.priority || b.score - a.score);
       case "category":
-        return tasks.sort((a, b) =>
-          (a.categoryName ?? "zzz").localeCompare(b.categoryName ?? "zzz", "tr") ||
-          a.priority - b.priority
+        return byStatusThen(
+          (a, b) =>
+            (a.categoryName ?? "zzz").localeCompare(b.categoryName ?? "zzz", "tr") ||
+            a.priority - b.priority
         );
-      default:
-        return tasks.sort((a, b) => {
+      case "time":
+        return byStatusThen((a, b) => {
           if (a.timeOfDay && b.timeOfDay) return a.timeOfDay.localeCompare(b.timeOfDay);
           if (a.timeOfDay) return -1;
           if (b.timeOfDay) return 1;
           return a.priority - b.priority;
         });
+      default:
+        return byStatusThen((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
     }
   }, [day, sortKey]);
+
+  const canDragReorder = view === "list" && sortKey === "manual";
+
+  const applyLocalOrder = useCallback(
+    (orderedIds: number[]) => {
+      setWeekDays((days) =>
+        days.map((d) => {
+          if (d.date !== selectedDate) return d;
+          const byId = new Map(d.tasks.map((t) => [t.id, t]));
+          const reordered = orderedIds
+            .map((id, index) => {
+              const t = byId.get(id);
+              return t ? { ...t, sortOrder: index + 1 } : null;
+            })
+            .filter((t): t is PusulaTask => t != null);
+          // Keep any tasks missing from orderedIds at the end.
+          const remaining = d.tasks.filter((t) => !orderedIds.includes(t.id));
+          return { ...d, tasks: [...reordered, ...remaining] };
+        })
+      );
+    },
+    [selectedDate]
+  );
+
+  const handleReorderDrop = useCallback(
+    async (targetId: number) => {
+      if (dragTaskId == null || dragTaskId === targetId) {
+        setDragTaskId(null);
+        setDropTargetId(null);
+        return;
+      }
+      const ids = sortedTasks.map((t) => t.id);
+      const from = ids.indexOf(dragTaskId);
+      const to = ids.indexOf(targetId);
+      if (from < 0 || to < 0) {
+        setDragTaskId(null);
+        setDropTargetId(null);
+        return;
+      }
+      const next = [...ids];
+      next.splice(from, 1);
+      next.splice(to, 0, dragTaskId);
+      setDragTaskId(null);
+      setDropTargetId(null);
+      applyLocalOrder(next);
+      try {
+        await pusulaApi.reorder({ date: selectedDate, taskIds: next });
+      } catch {
+        setError("Sıralama kaydedilemedi.");
+        await load();
+      }
+    },
+    [dragTaskId, sortedTasks, applyLocalOrder, selectedDate, load]
+  );
 
   const groupedByCategory = useMemo(() => {
     if (sortKey !== "category") return null;
@@ -127,8 +193,9 @@ export const PusulaPage: React.FC = () => {
     if (!title || quickAdding) return;
     setQuickAdding(true);
     try {
-      await pusulaApi.createTask({ title, date: selectedDate });
+      const res = await pusulaApi.createTask({ title, date: selectedDate });
       setQuickTitle("");
+      setTaskModal({ open: true, task: res.data });
       await load();
     } catch {
       setError("Görev eklenemedi.");
@@ -162,7 +229,6 @@ export const PusulaPage: React.FC = () => {
           </div>
           <div>
             <h1 className="text-xl font-bold leading-tight">Pusula</h1>
-            <p className="text-xs text-slate-400">Planlama ve görev takibi</p>
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
@@ -251,7 +317,7 @@ export const PusulaPage: React.FC = () => {
         <input
           value={quickTitle}
           onChange={(e) => setQuickTitle(e.target.value)}
-          placeholder="Hızlı görev ekle... (sadece başlık yeterli)"
+          placeholder="Hızlı görev ekle..."
           className="flex-1 p-3.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black/20 text-sm"
         />
         <button
@@ -282,6 +348,7 @@ export const PusulaPage: React.FC = () => {
             size="sm"
             ariaLabel="Sıralama"
             options={[
+              { id: "manual", label: "Sıra" },
               { id: "time", label: "Saat" },
               { id: "priority", label: "Öncelik" },
               { id: "category", label: "Kategori" },
@@ -297,12 +364,7 @@ export const PusulaPage: React.FC = () => {
       {loading ? (
         <p className="text-center py-16 text-slate-400 text-sm">Yükleniyor…</p>
       ) : view === "list" ? (
-        sortedTasks.length === 0 ? (
-          <div className="text-center py-16 text-slate-400">
-            <List size={36} className="mx-auto mb-3 opacity-40" />
-            <p className="text-sm">Bu gün için görev yok. Yukarıdan hızlıca ekleyin.</p>
-          </div>
-        ) : groupedByCategory ? (
+        sortedTasks.length === 0 ? null : groupedByCategory ? (
           <div className="space-y-5">
             {[...groupedByCategory.entries()].map(([cat, tasks]) => (
               <div key={cat} className="space-y-2">
@@ -332,8 +394,23 @@ export const PusulaPage: React.FC = () => {
                 onChanged={handleTaskChanged}
                 onDeleted={handleTaskDeleted}
                 onEdit={(task) => setTaskModal({ open: true, task })}
+                draggable={canDragReorder}
+                isDragging={dragTaskId === t.id}
+                isDropTarget={dropTargetId === t.id && dragTaskId !== t.id}
+                onDragStart={(id) => setDragTaskId(id)}
+                onDragOver={(id) => setDropTargetId(id)}
+                onDrop={(id) => void handleReorderDrop(id)}
+                onDragEnd={() => {
+                  setDragTaskId(null);
+                  setDropTargetId(null);
+                }}
               />
             ))}
+            {canDragReorder && sortedTasks.length > 1 && (
+              <p className="text-[11px] text-slate-400 px-1">
+                Sol tutamacı sürükleyerek sıralayın. Tamamlanan görevler listenin sonunda kalır.
+              </p>
+            )}
           </div>
         )
       ) : (
@@ -348,13 +425,6 @@ export const PusulaPage: React.FC = () => {
           onEdit={(task) => setTaskModal({ open: true, task })}
         />
       )}
-
-      <div className="flex items-center gap-2 text-slate-400">
-        <CalendarDays size={14} />
-        <p className="text-[11px]">
-          Gün bittiğinde tamamlanmayan görevler raporlarda "Yapılmadı" sayılır.
-        </p>
-      </div>
 
       {taskModal.open && (
         <PusulaTaskModal

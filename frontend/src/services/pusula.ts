@@ -31,6 +31,8 @@ export const pusulaApi = {
   ) => apiClient.post<PusulaTask>(`/pusula/tasks/${id}/status`, data),
   schedule: (id: number, data: { date?: string | null; timeOfDay?: string | null }) =>
     apiClient.put<PusulaTask>(`/pusula/tasks/${id}/schedule`, data),
+  reorder: (data: { date: string; taskIds: number[] }) =>
+    apiClient.post("/pusula/tasks/reorder", data),
 
   // Steps
   addStep: (taskId: number, title: string, date: string) =>
