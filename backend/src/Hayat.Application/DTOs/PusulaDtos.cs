@@ -26,11 +26,7 @@ namespace Hayat.Application.DTOs
         string WorkType,
         string Recurrence,
         int? RecurrenceDay,
-        int AutoScore,
-        int? ManualScore,
-        int Score,
         string Status,
-        double EarnedPoints,
         int SortOrder,
         IReadOnlyList<PusulaStepDto> Steps);
 
@@ -38,9 +34,7 @@ namespace Hayat.Application.DTOs
         DateOnly Date,
         int TotalTasks,
         int CompletedTasks,
-        int PlannedPoints,
-        double EarnedPoints,
-        double ScorePercent,
+        double CompletionPercent,
         IReadOnlyList<PusulaTaskDto> Tasks);
 
     public record CreatePusulaTaskRequest(
@@ -55,7 +49,6 @@ namespace Hayat.Application.DTOs
         string? WorkType,
         string? Recurrence,
         int? RecurrenceDay,
-        int? ManualScore,
         List<string>? Steps);
 
     public record UpdatePusulaTaskRequest(
@@ -69,8 +62,7 @@ namespace Hayat.Application.DTOs
         int Priority,
         string? WorkType,
         string? Recurrence,
-        int? RecurrenceDay,
-        int? ManualScore);
+        int? RecurrenceDay);
 
     public record PusulaTaskStatusRequest(DateOnly Date, string? Status, int? ActualMinutes);
     public record PusulaScheduleRequest(DateOnly? Date, string? TimeOfDay);
@@ -98,9 +90,6 @@ namespace Hayat.Application.DTOs
     public record PusulaTrendBucketDto(
         string Key,
         string Label,
-        int PlannedPoints,
-        double EarnedPoints,
-        double ScorePercent,
         int TotalTasks,
         int CompletedTasks,
         double CompletionPercent);
@@ -111,5 +100,6 @@ namespace Hayat.Application.DTOs
         string[] AvailableBuckets,
         IReadOnlyList<PusulaTrendBucketDto> Buckets);
 
-    public record PusulaCategorySliceDto(string Name, double Points, double Percent);
+    /// <summary>Category share by completed task count (not points).</summary>
+    public record PusulaCategorySliceDto(string Name, int TaskCount, double Percent);
 }

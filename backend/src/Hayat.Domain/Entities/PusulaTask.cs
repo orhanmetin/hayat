@@ -35,9 +35,6 @@ namespace Hayat.Domain.Entities
         /// <summary>1 (highest) - 3 (lowest).</summary>
         public int Priority { get; set; } = 3;
 
-        /// <summary>Overrides the auto-suggested score when set.</summary>
-        public int? ManualScore { get; set; }
-
         public int Recurrence { get; set; } = RecurrenceNone;
         /// <summary>For weekly recurrence: 0=Sunday .. 6=Saturday (matches DayOfWeek).</summary>
         public int? RecurrenceDay { get; set; }

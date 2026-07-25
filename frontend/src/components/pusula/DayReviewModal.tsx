@@ -164,24 +164,17 @@ export const DayReviewModal: React.FC<DayReviewModalProps> = ({ initialDate, onC
           ) : (
             <div className="space-y-4">
               {dayStats && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 text-center">
-                    <p className="text-2xl font-bold">
-                      {dayStats.completedTasks}
-                      <span className="text-sm font-medium text-slate-400">
-                        /{dayStats.totalTasks}
-                      </span>
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Tamamlanan / Planlanan</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-primary/10 text-center">
-                    <p className="text-2xl font-bold text-primary dark:text-primary-light">
-                      %{dayStats.scorePercent}
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Performans Skoru ({dayStats.earnedPoints}/{dayStats.plannedPoints} puan)
-                    </p>
-                  </div>
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 text-center">
+                  <p className="text-2xl font-bold">
+                    {dayStats.completedTasks}
+                    <span className="text-sm font-medium text-slate-400">
+                      /{dayStats.totalTasks}
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Tamamlanan / Planlanan
+                    {dayStats.totalTasks > 0 ? ` · %${dayStats.completionPercent}` : ""}
+                  </p>
                 </div>
               )}
 

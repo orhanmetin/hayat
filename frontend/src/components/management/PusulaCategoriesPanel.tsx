@@ -58,7 +58,7 @@ export const PusulaCategoriesPanel: React.FC = () => {
   const handleDelete = async (category: PusulaCategory) => {
     if (
       !window.confirm(
-        `"${category.name}" kategorisini silmek istediğinize emin misiniz? Kullanımda olan kategoriler pasif yapılır.`
+        `"${category.name}" kategorisini kalıcı olarak silmek istediğinize emin misiniz? Bağlı görevlerin kategorisi kaldırılır.`
       )
     )
       return;
@@ -143,8 +143,8 @@ export const PusulaCategoriesPanel: React.FC = () => {
       <div>
         <h2 className="font-semibold">Pusula Kategorileri</h2>
         <p className="text-xs text-slate-400 mt-1">
-          Görevler için ana kategoriler ve alt kategoriler. Kullanımda olanlar silinmez, pasif
-          yapılır.
+          Görevler için ana kategoriler ve alt kategoriler. Silinen kategoriler kalıcı olarak
+          kaldırılır; bağlı görevlerin kategorisi boşaltılır.
         </p>
       </div>
 

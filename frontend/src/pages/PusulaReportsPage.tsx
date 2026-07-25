@@ -2,8 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Check, X as XIcon, Clock3 } from "lucide-react";
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Cell,
   Legend,
@@ -26,7 +24,6 @@ import { SegmentedControl } from "../components/dashboard/SegmentedControl";
 import { cn } from "../lib/utils";
 
 type Period = "weekly" | "monthly" | "yearly";
-type Metric = "points" | "completion";
 type ListMode = "day" | "week" | "month";
 
 const PIE_COLORS = ["#5f7a61", "#f59e0b", "#6366f1", "#10b981", "#ef4444", "#8b5cf6", "#06b6d4", "#f43f5e"];
@@ -70,7 +67,6 @@ const tooltipStyle = {
 
 export const PusulaReportsPage: React.FC = () => {
   const [period, setPeriod] = useState<Period>("weekly");
-  const [metric, setMetric] = useState<Metric>("points");
   const [trend, setTrend] = useState<PusulaTrend | null>(null);
   const [slices, setSlices] = useState<PusulaCategorySlice[]>([]);
   const [listMode, setListMode] = useState<ListMode>("day");
@@ -124,11 +120,9 @@ export const PusulaReportsPage: React.FC = () => {
   );
 
   const listTotals = useMemo(() => {
-    const planned = listDays.reduce((s, d) => s + d.plannedPoints, 0);
-    const earned = Math.round(listDays.reduce((s, d) => s + d.earnedPoints, 0) * 10) / 10;
     const total = listDays.reduce((s, d) => s + d.totalTasks, 0);
     const completed = listDays.reduce((s, d) => s + d.completedTasks, 0);
-    return { planned, earned, total, completed };
+    return { total, completed };
   }, [listDays]);
 
   return (
@@ -150,30 +144,18 @@ export const PusulaReportsPage: React.FC = () => {
       {/* Trend */}
       <div className="rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5 p-4 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold text-sm">Trend</h2>
-          <div className="flex flex-wrap gap-2">
-            <SegmentedControl
-              size="sm"
-              ariaLabel="Dönem"
-              options={[
-                { id: "weekly", label: "Haftalık" },
-                { id: "monthly", label: "Aylık" },
-                { id: "yearly", label: "Yıllık" },
-              ]}
-              value={period}
-              onChange={(v) => setPeriod(v)}
-            />
-            <SegmentedControl
-              size="sm"
-              ariaLabel="Metrik"
-              options={[
-                { id: "points", label: "Puan" },
-                { id: "completion", label: "Tamamlama Oranı" },
-              ]}
-              value={metric}
-              onChange={(v) => setMetric(v)}
-            />
-          </div>
+          <h2 className="font-semibold text-sm">Tamamlama Trendı</h2>
+          <SegmentedControl
+            size="sm"
+            ariaLabel="Dönem"
+            options={[
+              { id: "weekly", label: "Haftalık" },
+              { id: "monthly", label: "Aylık" },
+              { id: "yearly", label: "Yıllık" },
+            ]}
+            value={period}
+            onChange={(v) => setPeriod(v)}
+          />
         </div>
 
         {loading ? (
@@ -181,58 +163,26 @@ export const PusulaReportsPage: React.FC = () => {
         ) : trend && trend.buckets.length > 0 ? (
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              {metric === "points" ? (
-                <BarChart data={trend.buckets} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "currentColor" }} />
-                  <YAxis tick={{ fontSize: 11, fill: "currentColor" }} width={40} />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar
-                    dataKey="plannedPoints"
-                    name="Planlanan"
-                    fill="#cbd5e1"
-                    radius={[6, 6, 0, 0]}
-                    maxBarSize={40}
-                  />
-                  <Bar
-                    dataKey="earnedPoints"
-                    name="Kazanılan"
-                    fill="#5f7a61"
-                    radius={[6, 6, 0, 0]}
-                    maxBarSize={40}
-                  />
-                </BarChart>
-              ) : (
-                <LineChart data={trend.buckets} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "currentColor" }} />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: "currentColor" }}
-                    width={40}
-                    domain={[0, 100]}
-                    tickFormatter={(v: number) => `%${v}`}
-                  />
-                  <Tooltip contentStyle={tooltipStyle} />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Line
-                    type="monotone"
-                    dataKey="completionPercent"
-                    name="Görev Tamamlama %"
-                    stroke="#6366f1"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="scorePercent"
-                    name="Puan Başarı %"
-                    stroke="#5f7a61"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                  />
-                </LineChart>
-              )}
+              <LineChart data={trend.buckets} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: "currentColor" }} />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "currentColor" }}
+                  width={40}
+                  domain={[0, 100]}
+                  tickFormatter={(v: number) => `%${v}`}
+                />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Line
+                  type="monotone"
+                  dataKey="completionPercent"
+                  name="Görev Tamamlama %"
+                  stroke="#5f7a61"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         ) : (
@@ -245,12 +195,12 @@ export const PusulaReportsPage: React.FC = () => {
         <h2 className="font-semibold text-sm mb-3">
           Kategori Dağılımı{" "}
           <span className="font-normal text-xs text-slate-400">
-            (kazanılan puanlar,{" "}
+            (tamamlanan görevler,{" "}
             {period === "weekly" ? "bu hafta" : period === "monthly" ? "bu ay" : "bu yıl"})
           </span>
         </h2>
         {slices.length === 0 ? (
-          <p className="text-center py-10 text-sm text-slate-400">Henüz kazanılan puan yok.</p>
+          <p className="text-center py-10 text-sm text-slate-400">Henüz tamamlanan görev yok.</p>
         ) : (
           <div className="flex flex-col md:flex-row items-center gap-4">
             <div className="h-56 w-full md:w-1/2">
@@ -258,7 +208,7 @@ export const PusulaReportsPage: React.FC = () => {
                 <PieChart>
                   <Pie
                     data={slices}
-                    dataKey="points"
+                    dataKey="taskCount"
                     nameKey="name"
                     cx="50%"
                     cy="50%"
@@ -283,7 +233,7 @@ export const PusulaReportsPage: React.FC = () => {
                   />
                   <span className="flex-1 truncate">{s.name}</span>
                   <span className="font-semibold">%{s.percent}</span>
-                  <span className="text-xs text-slate-400 w-14 text-right">{s.points}p</span>
+                  <span className="text-xs text-slate-400 w-14 text-right">{s.taskCount} görev</span>
                 </div>
               ))}
             </div>
@@ -319,9 +269,6 @@ export const PusulaReportsPage: React.FC = () => {
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
           <span>
             Görev: <strong>{listTotals.completed}/{listTotals.total}</strong>
-          </span>
-          <span>
-            Puan: <strong>{listTotals.earned}/{listTotals.planned}</strong>
           </span>
         </div>
 
@@ -364,9 +311,6 @@ export const PusulaReportsPage: React.FC = () => {
                     {t.priority === 1 ? "High" : t.priority === 2 ? "Mid" : "Low"}
                   </p>
                 </div>
-                <span className="text-xs font-bold text-slate-500 shrink-0">
-                  {t.earnedPoints}/{t.score}p
-                </span>
               </div>
             ))}
           </div>

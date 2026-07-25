@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace Hayat.Domain.Entities
 {
-    /// <summary>Check-only sub step of a task (no time constraints, no own score).</summary>
+    /// <summary>Check-only sub step of a task (no time constraints).</summary>
     public class PusulaTaskStep
     {
         public int Id { get; set; }
