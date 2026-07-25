@@ -180,17 +180,6 @@ export const PusulaTaskCard: React.FC<PusulaTaskCardProps> = ({
             >
               {task.title}
             </button>
-            <span
-              className={cn(
-                "shrink-0 px-2 py-0.5 rounded-lg text-xs font-bold",
-                completed
-                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                  : "bg-primary/10 text-primary dark:text-primary-light"
-              )}
-              title={task.manualScore != null ? "Manuel puan" : "Otomatik puan"}
-            >
-              {task.score}p
-            </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[11px]">

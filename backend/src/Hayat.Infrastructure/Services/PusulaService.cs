@@ -22,9 +22,10 @@ namespace Hayat.Infrastructure.Services
 
         public async Task<IReadOnlyList<PusulaCategoryDto>> GetCategoriesAsync(int userId)
         {
+            await PurgeInactiveCategoriesAsync(userId);
             await EnsureDefaultCategoriesAsync(userId);
             return await _db.PusulaCategories.AsNoTracking()
-                .Where(c => c.UserId == userId)
+                .Where(c => c.UserId == userId && c.IsActive)
                 .OrderBy(c => c.ParentId == null ? 0 : 1)
                 .ThenBy(c => c.SortOrder)
                 .ThenBy(c => c.Name)
@@ -82,27 +83,56 @@ namespace Hayat.Infrastructure.Services
                 .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
             if (category == null) return false;
 
-            var childIds = category.Children.Select(c => c.Id).ToList();
-            var idsToCheck = new List<int>(childIds) { id };
-            var inUse = await _db.PusulaTasks.AnyAsync(t => t.CategoryId != null && idsToCheck.Contains(t.CategoryId.Value));
-
-            if (inUse || childIds.Count > 0)
-            {
-                category.IsActive = false;
-                foreach (var child in category.Children) child.IsActive = false;
-            }
-            else
-            {
-                _db.PusulaCategories.Remove(category);
-            }
-
-            await _db.SaveChangesAsync();
+            var toRemove = new List<PusulaCategory>(category.Children) { category };
+            await HardDeleteCategoriesAsync(toRemove);
             return true;
+        }
+
+        /// <summary>
+        /// Permanently removes soft-deleted (IsActive=false) categories, e.g. duplicate "Kişisel".
+        /// </summary>
+        private async Task PurgeInactiveCategoriesAsync(int userId)
+        {
+            var inactive = await _db.PusulaCategories
+                .Where(c => c.UserId == userId && !c.IsActive)
+                .ToListAsync();
+            if (inactive.Count == 0) return;
+
+            // Also remove children of inactive roots (RESTRICT parent FK), even if somehow still active.
+            var inactiveRootIds = inactive.Where(c => c.ParentId == null).Select(c => c.Id).ToList();
+            var childrenOfInactiveRoots = inactiveRootIds.Count == 0
+                ? new List<PusulaCategory>()
+                : await _db.PusulaCategories
+                    .Where(c => c.UserId == userId
+                        && c.ParentId != null
+                        && inactiveRootIds.Contains(c.ParentId.Value))
+                    .ToListAsync();
+
+            await HardDeleteCategoriesAsync(inactive.Concat(childrenOfInactiveRoots));
+        }
+
+        private async Task HardDeleteCategoriesAsync(IEnumerable<PusulaCategory> categories)
+        {
+            var all = categories.GroupBy(c => c.Id).Select(g => g.First()).ToList();
+            if (all.Count == 0) return;
+
+            var ids = all.Select(c => c.Id).ToList();
+            var tasks = await _db.PusulaTasks
+                .Where(t => t.CategoryId != null && ids.Contains(t.CategoryId.Value))
+                .ToListAsync();
+            foreach (var task in tasks)
+                task.CategoryId = null;
+
+            // Children first (ParentId ON DELETE RESTRICT).
+            _db.PusulaCategories.RemoveRange(all.Where(c => c.ParentId != null));
+            await _db.SaveChangesAsync();
+            _db.PusulaCategories.RemoveRange(all.Where(c => c.ParentId == null));
+            await _db.SaveChangesAsync();
         }
 
         private async Task EnsureDefaultCategoriesAsync(int userId)
         {
-            if (await _db.PusulaCategories.AnyAsync(c => c.UserId == userId)) return;
+            if (await _db.PusulaCategories.AnyAsync(c => c.UserId == userId && c.IsActive)) return;
 
             var work = new PusulaCategory { UserId = userId, Name = "İş", SortOrder = 1 };
             var personal = new PusulaCategory { UserId = userId, Name = "Kişisel", SortOrder = 2 };
@@ -157,7 +187,6 @@ namespace Hayat.Infrastructure.Services
                 EstimatedMinutes = Positive(request.EstimatedMinutes),
                 ActualMinutes = Positive(request.ActualMinutes),
                 Priority = ClampPriority(request.Priority),
-                ManualScore = Positive(request.ManualScore),
                 Recurrence = recurrence,
                 RecurrenceDay = recurrence == PusulaTask.RecurrenceWeekly
                     ? (request.RecurrenceDay is >= 0 and <= 6 ? request.RecurrenceDay : (int)date.DayOfWeek)
@@ -201,7 +230,6 @@ namespace Hayat.Infrastructure.Services
             task.EstimatedMinutes = Positive(request.EstimatedMinutes);
             task.ActualMinutes = Positive(request.ActualMinutes);
             task.Priority = ClampPriority(request.Priority);
-            task.ManualScore = Positive(request.ManualScore);
             task.Recurrence = recurrence;
             task.RecurrenceDay = recurrence == PusulaTask.RecurrenceWeekly
                 ? (request.RecurrenceDay is >= 0 and <= 6 ? request.RecurrenceDay : (int)request.Date.DayOfWeek)
@@ -398,16 +426,11 @@ namespace Hayat.Infrastructure.Services
                     .Where(kv => kv.Key >= b.Start && kv.Key <= b.End)
                     .Select(kv => kv.Value)
                     .ToList();
-                var planned = days.Sum(x => x.PlannedPoints);
-                var earned = days.Sum(x => x.EarnedPoints);
                 var total = days.Sum(x => x.TotalTasks);
                 var completed = days.Sum(x => x.CompletedTasks);
                 return new PusulaTrendBucketDto(
                     b.Key,
                     b.Label,
-                    planned,
-                    Math.Round(earned, 1),
-                    planned > 0 ? Math.Round(earned * 100.0 / planned, 1) : 0,
                     total,
                     completed,
                     total > 0 ? Math.Round(completed * 100.0 / total, 1) : 0);
@@ -421,25 +444,25 @@ namespace Hayat.Infrastructure.Services
             if (to < from) (from, to) = (to, from);
             var tasks = await LoadTasksForRangeAsync(userId, from, to);
 
-            var pointsByCategory = new Dictionary<string, double>();
+            var countByCategory = new Dictionary<string, int>();
             for (var d = from; d <= to; d = d.AddDays(1))
             {
                 foreach (var task in tasks.Where(t => OccursOn(t, d)))
                 {
-                    var earned = EarnedPoints(task, d);
-                    if (earned <= 0) continue;
+                    var mapped = MapTask(task, d);
+                    if (mapped.Status != "completed") continue;
                     var name = task.Category?.Name ?? "Diğer";
-                    pointsByCategory[name] = pointsByCategory.GetValueOrDefault(name) + earned;
+                    countByCategory[name] = countByCategory.GetValueOrDefault(name) + 1;
                 }
             }
 
-            var totalPoints = pointsByCategory.Values.Sum();
-            return pointsByCategory
+            var total = countByCategory.Values.Sum();
+            return countByCategory
                 .OrderByDescending(kv => kv.Value)
                 .Select(kv => new PusulaCategorySliceDto(
                     kv.Key,
-                    Math.Round(kv.Value, 1),
-                    totalPoints > 0 ? Math.Round(kv.Value * 100.0 / totalPoints, 1) : 0))
+                    kv.Value,
+                    total > 0 ? Math.Round(kv.Value * 100.0 / total, 1) : 0))
                 .ToList();
         }
 
@@ -470,15 +493,13 @@ namespace Hayat.Infrastructure.Services
                 .ThenBy(t => t.Priority)
                 .ToList();
 
-            var planned = dayTasks.Sum(t => t.Score);
-            var earned = dayTasks.Sum(t => t.EarnedPoints);
+            var total = dayTasks.Count;
+            var completed = dayTasks.Count(t => t.Status == "completed");
             return new PusulaDayDto(
                 date,
-                dayTasks.Count,
-                dayTasks.Count(t => t.Status == "completed"),
-                planned,
-                Math.Round(earned, 1),
-                planned > 0 ? Math.Round(earned * 100.0 / planned, 1) : 0,
+                total,
+                completed,
+                total > 0 ? Math.Round(completed * 100.0 / total, 1) : 0,
                 dayTasks);
         }
 
@@ -507,19 +528,10 @@ namespace Hayat.Infrastructure.Services
                 ? task.ActualMinutes
                 : occurrence?.ActualMinutes;
 
-            var autoScore = AutoScore(task.Priority, task.EstimatedMinutes);
-            var score = task.ManualScore ?? autoScore;
-
             var steps = task.Steps
                 .OrderBy(s => s.SortOrder)
                 .Select(s => new PusulaStepDto(s.Id, s.Title, s.SortOrder, s.Checks.Any(c => c.Date == date)))
                 .ToList();
-
-            double earned = 0;
-            if (status == "completed")
-                earned = score;
-            else if (steps.Count > 0)
-                earned = score * (double)steps.Count(s => s.IsChecked) / steps.Count;
 
             return new PusulaTaskDto(
                 task.Id,
@@ -536,16 +548,10 @@ namespace Hayat.Infrastructure.Services
                 WorkTypeToString(task.WorkType),
                 RecurrenceToString(task.Recurrence),
                 task.RecurrenceDay,
-                autoScore,
-                task.ManualScore,
-                score,
                 status,
-                Math.Round(earned, 1),
                 task.SortOrder,
                 steps);
         }
-
-        private static double EarnedPoints(PusulaTask task, DateOnly date) => MapTask(task, date).EarnedPoints;
 
         private async Task<PusulaTaskDto?> GetTaskDtoAsync(int userId, int taskId, DateOnly date)
         {
@@ -557,16 +563,6 @@ namespace Hayat.Infrastructure.Services
                 .Include(t => t.Occurrences.Where(o => o.Date == date))
                 .FirstOrDefaultAsync();
             return task == null ? null : MapTask(task, date);
-        }
-
-        /// <summary>Priority coefficient (P1=3, P2=2, P3=1) x estimated 15-minute units (min 1).</summary>
-        public static int AutoScore(int priority, int? estimatedMinutes)
-        {
-            var coeff = priority switch { 1 => 3, 2 => 2, _ => 1 };
-            var units = estimatedMinutes is > 0
-                ? Math.Max(1, (int)Math.Round(estimatedMinutes.Value / 15.0))
-                : 1;
-            return coeff * units;
         }
 
         // ---------- Small helpers ----------

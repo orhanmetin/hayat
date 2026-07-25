@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Plus, Trash2, Sparkles } from "lucide-react";
+import { X, Plus, Trash2 } from "lucide-react";
 import { pusulaApi } from "../../services/pusula";
-import { pusulaAutoScore } from "../../types/pusula";
 import type {
   PusulaCategory,
   PusulaRecurrence,
@@ -92,9 +91,6 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
   const [recurrenceDay, setRecurrenceDay] = useState<number>(
     task?.recurrenceDay ?? new Date().getDay()
   );
-  const [manualScore, setManualScore] = useState<string>(
-    task?.manualScore != null ? String(task.manualScore) : ""
-  );
   const [newSteps, setNewSteps] = useState<string[]>([]);
   const [stepDraft, setStepDraft] = useState("");
   const [saving, setSaving] = useState(false);
@@ -107,12 +103,6 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
       document.body.style.overflow = prev;
     };
   }, []);
-
-  const autoScore = pusulaAutoScore(
-    priority,
-    estimatedMinutes ? parseInt(estimatedMinutes, 10) : null
-  );
-  const effectiveScore = manualScore !== "" ? parseInt(manualScore, 10) || 0 : autoScore;
 
   const rootCategories = useMemo(
     () => categories.filter((c) => c.parentId === null && c.isActive),
@@ -154,7 +144,6 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
       workType,
       recurrence,
       recurrenceDay: recurrence === "weekly" ? recurrenceDay : null,
-      manualScore: manualScore !== "" ? parseInt(manualScore, 10) || null : null,
     };
     try {
       const res = isEdit
@@ -426,33 +415,6 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
               ))}
             </div>
           </div>
-
-          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-3">
-            <Sparkles size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-            <div className="flex-1 text-sm">
-              <span className="text-slate-600 dark:text-slate-300">Önerilen puan: </span>
-              <strong>{autoScore}</strong>
-              <span className="text-xs text-slate-400 ml-2">
-                (
-                {PRIORITY_OPTIONS.find((o) => o.value === priority)?.label ?? "Low"} ×{" "}
-                {estimatedMinutes ? `${estimatedMinutes}dk/15` : "1 birim"})
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-slate-500">Manuel:</label>
-              <input
-                type="number"
-                min={0}
-                value={manualScore}
-                onChange={(e) => setManualScore(e.target.value)}
-                placeholder={String(autoScore)}
-                className="w-20 p-2 rounded-lg border border-slate-200 dark:border-white/10 bg-transparent text-sm text-center"
-              />
-            </div>
-          </div>
-          <p className="text-right text-xs font-semibold text-emerald-600 dark:text-emerald-400 -mt-2">
-            Görev puanı: {effectiveScore}
-          </p>
 
           {!isEdit && (
             <div>

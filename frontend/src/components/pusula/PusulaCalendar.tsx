@@ -113,7 +113,7 @@ export const PusulaCalendar: React.FC<PusulaCalendarProps> = ({
         {height >= 40 && (
           <p className="opacity-70 mt-0.5">
             {task.timeOfDay}
-            {task.estimatedMinutes ? ` · ${task.estimatedMinutes}dk` : ""} · {task.score}p
+            {task.estimatedMinutes ? ` · ${task.estimatedMinutes}dk` : ""}
           </p>
         )}
       </div>

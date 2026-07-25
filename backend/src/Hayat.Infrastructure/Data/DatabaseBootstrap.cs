@@ -143,7 +143,6 @@ namespace Hayat.Infrastructure.Data
                         "EstimatedMinutes" INTEGER NULL,
                         "ActualMinutes" INTEGER NULL,
                         "Priority" INTEGER NOT NULL DEFAULT 3,
-                        "ManualScore" INTEGER NULL,
                         "Recurrence" INTEGER NOT NULL DEFAULT 0,
                         "RecurrenceDay" INTEGER NULL,
                         "WorkType" INTEGER NOT NULL DEFAULT 0,
@@ -205,6 +204,46 @@ namespace Hayat.Infrastructure.Data
                     ALTER TABLE "PusulaTasks" ADD COLUMN "SortOrder" INTEGER NOT NULL DEFAULT 0;
                     """);
                 logger?.LogInformation("Added SortOrder to PusulaTasks.");
+            }
+
+            // Hard-delete soft-deleted Pusula categories (e.g. duplicate inactive "Kişisel").
+            if (TableExists(context, "PusulaCategories"))
+            {
+                // SQLite: wrap self-referencing subqueries so DELETE/UPDATE can target the same table.
+                var cleared = context.Database.ExecuteSqlRaw("""
+                    UPDATE "PusulaTasks"
+                    SET "CategoryId" = NULL
+                    WHERE "CategoryId" IN (
+                        SELECT "Id" FROM (
+                            SELECT c."Id" FROM "PusulaCategories" c
+                            WHERE c."IsActive" = 0
+                            UNION
+                            SELECT c."Id" FROM "PusulaCategories" c
+                            INNER JOIN "PusulaCategories" p ON c."ParentId" = p."Id"
+                            WHERE p."IsActive" = 0
+                        )
+                    );
+                    """);
+
+                var deletedChildren = context.Database.ExecuteSqlRaw("""
+                    DELETE FROM "PusulaCategories"
+                    WHERE "Id" IN (
+                        SELECT "Id" FROM (
+                            SELECT c."Id" FROM "PusulaCategories" c
+                            INNER JOIN "PusulaCategories" p ON c."ParentId" = p."Id"
+                            WHERE p."IsActive" = 0
+                        )
+                    );
+                    """);
+
+                var deletedInactive = context.Database.ExecuteSqlRaw("""
+                    DELETE FROM "PusulaCategories" WHERE "IsActive" = 0;
+                    """);
+
+                if (cleared + deletedChildren + deletedInactive > 0)
+                    logger?.LogInformation(
+                        "Purged inactive Pusula categories (hard delete): {TasksCleared} task links, {Children} children, {Inactive} inactive.",
+                        cleared, deletedChildren, deletedInactive);
             }
         }
 

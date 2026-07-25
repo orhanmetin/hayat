@@ -103,7 +103,7 @@ export const PusulaPage: React.FC = () => {
 
     switch (sortKey) {
       case "priority":
-        return byStatusThen((a, b) => a.priority - b.priority || b.score - a.score);
+        return byStatusThen((a, b) => a.priority - b.priority || a.sortOrder - b.sortOrder);
       case "category":
         return byStatusThen(
           (a, b) =>
@@ -258,7 +258,7 @@ export const PusulaPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Date nav + score */}
+      {/* Date nav + completion */}
       <div className="rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5 p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <button
@@ -291,21 +291,20 @@ export const PusulaPage: React.FC = () => {
           </button>
         </div>
 
-        {day && (
+        {day && day.totalTasks > 0 && (
           <div>
             <div className="flex items-baseline justify-between text-sm mb-1.5">
               <span className="font-semibold">
-                Puan Başarı Oranı: <span className="text-primary">%{day.scorePercent}</span>
+                Tamamlama: <span className="text-primary">%{day.completionPercent}</span>
               </span>
               <span className="text-xs text-slate-400">
-                {day.earnedPoints}/{day.plannedPoints} puan · {day.completedTasks}/{day.totalTasks}{" "}
-                görev
+                {day.completedTasks}/{day.totalTasks} görev
               </span>
             </div>
             <div className="h-3 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-400 transition-all duration-700"
-                style={{ width: `${Math.min(100, day.scorePercent)}%` }}
+                style={{ width: `${Math.min(100, day.completionPercent)}%` }}
               />
             </div>
           </div>
@@ -451,16 +450,14 @@ function recomputeDays(days: PusulaDay[], updated: PusulaTask): PusulaDay[] {
   return days.map((d) => {
     if (d.date !== updated.date) return d;
     const tasks = d.tasks.map((t) => (t.id === updated.id ? updated : t));
-    const planned = tasks.reduce((sum, t) => sum + t.score, 0);
-    const earned = Math.round(tasks.reduce((sum, t) => sum + t.earnedPoints, 0) * 10) / 10;
+    const total = tasks.length;
+    const completed = tasks.filter((t) => t.status === "completed").length;
     return {
       ...d,
       tasks,
-      totalTasks: tasks.length,
-      completedTasks: tasks.filter((t) => t.status === "completed").length,
-      plannedPoints: planned,
-      earnedPoints: earned,
-      scorePercent: planned > 0 ? Math.round((earned * 1000) / planned) / 10 : 0,
+      totalTasks: total,
+      completedTasks: completed,
+      completionPercent: total > 0 ? Math.round((completed * 1000) / total) / 10 : 0,
     };
   });
 }
