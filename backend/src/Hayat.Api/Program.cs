@@ -105,6 +105,7 @@ builder.Services.AddScoped<IAnecdoteService, AnecdoteService>();
 builder.Services.AddScoped<IActiveTimerService, ActiveTimerService>();
 builder.Services.AddScoped<IRacePrepService, RacePrepService>();
 builder.Services.AddScoped<IPusulaService, PusulaService>();
+builder.Services.AddScoped<IDigitalService, DigitalService>();
 
 var app = builder.Build();
 

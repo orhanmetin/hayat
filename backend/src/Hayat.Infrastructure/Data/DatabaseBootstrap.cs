@@ -245,6 +245,53 @@ namespace Hayat.Infrastructure.Data
                         "Purged inactive Pusula categories (hard delete): {TasksCleared} task links, {Children} children, {Inactive} inactive.",
                         cleared, deletedChildren, deletedInactive);
             }
+
+            if (TableExists(context, "Users") && !ColumnExists(context, "Users", "ShortcutsApiToken"))
+            {
+                context.Database.ExecuteSqlRaw("""
+                    ALTER TABLE "Users" ADD COLUMN "ShortcutsApiToken" TEXT NULL;
+                    """);
+                context.Database.ExecuteSqlRaw("""
+                    CREATE INDEX IF NOT EXISTS "IX_Users_ShortcutsApiToken" ON "Users" ("ShortcutsApiToken");
+                    """);
+                logger?.LogInformation("Added ShortcutsApiToken to Users.");
+            }
+
+            if (!TableExists(context, "DailyStepLogs"))
+            {
+                context.Database.ExecuteSqlRaw("""
+                    CREATE TABLE IF NOT EXISTS "DailyStepLogs" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_DailyStepLogs" PRIMARY KEY AUTOINCREMENT,
+                        "UserId" INTEGER NOT NULL,
+                        "Date" TEXT NOT NULL,
+                        "Steps" INTEGER NOT NULL,
+                        "Source" TEXT NOT NULL DEFAULT 'shortcuts',
+                        "SyncedAt" TEXT NOT NULL,
+                        CONSTRAINT "FK_DailyStepLogs_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+                    );
+                    CREATE UNIQUE INDEX IF NOT EXISTS "IX_DailyStepLogs_UserId_Date" ON "DailyStepLogs" ("UserId", "Date");
+                    """);
+                logger?.LogInformation("Created DailyStepLogs table.");
+            }
+
+            if (!TableExists(context, "ScreenTimeLogs"))
+            {
+                context.Database.ExecuteSqlRaw("""
+                    CREATE TABLE IF NOT EXISTS "ScreenTimeLogs" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_ScreenTimeLogs" PRIMARY KEY AUTOINCREMENT,
+                        "UserId" INTEGER NOT NULL,
+                        "Date" TEXT NOT NULL,
+                        "AppName" TEXT NOT NULL,
+                        "Kind" TEXT NOT NULL DEFAULT 'app',
+                        "Minutes" INTEGER NOT NULL,
+                        "SyncedAt" TEXT NOT NULL,
+                        CONSTRAINT "FK_ScreenTimeLogs_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+                    );
+                    CREATE UNIQUE INDEX IF NOT EXISTS "IX_ScreenTimeLogs_UserId_Date_AppName_Kind"
+                        ON "ScreenTimeLogs" ("UserId", "Date", "AppName", "Kind");
+                    """);
+                logger?.LogInformation("Created ScreenTimeLogs table.");
+            }
         }
 
         private static void EnsureMeditationTypesSchema(AppDbContext context, ILogger? logger)

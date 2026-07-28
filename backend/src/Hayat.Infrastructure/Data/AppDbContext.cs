@@ -35,6 +35,8 @@ namespace Hayat.Infrastructure.Data
         public DbSet<PusulaStepCheck> PusulaStepChecks => Set<PusulaStepCheck>();
         public DbSet<PusulaOccurrence> PusulaOccurrences => Set<PusulaOccurrence>();
         public DbSet<PusulaDayReview> PusulaDayReviews => Set<PusulaDayReview>();
+        public DbSet<DailyStepLog> DailyStepLogs => Set<DailyStepLog>();
+        public DbSet<ScreenTimeLog> ScreenTimeLogs => Set<ScreenTimeLog>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -47,6 +49,8 @@ namespace Hayat.Infrastructure.Data
                 e.Property(x => x.Username).HasMaxLength(50).IsRequired();
                 e.Property(x => x.PasswordHash).HasMaxLength(255).IsRequired();
                 e.Property(x => x.DisplayName).HasMaxLength(100).IsRequired();
+                e.Property(x => x.ShortcutsApiToken).HasMaxLength(128);
+                e.HasIndex(x => x.ShortcutsApiToken);
             });
 
             modelBuilder.Entity<SportActivityType>(e =>
@@ -204,6 +208,23 @@ namespace Hayat.Infrastructure.Data
                 e.HasIndex(x => new { x.UserId, x.Date }).IsUnique();
                 e.Property(x => x.StartVision).HasMaxLength(4000);
                 e.Property(x => x.EndReflection).HasMaxLength(4000);
+                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<DailyStepLog>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.HasIndex(x => new { x.UserId, x.Date }).IsUnique();
+                e.Property(x => x.Source).HasMaxLength(40).IsRequired();
+                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<ScreenTimeLog>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.HasIndex(x => new { x.UserId, x.Date, x.AppName, x.Kind }).IsUnique();
+                e.Property(x => x.AppName).HasMaxLength(120).IsRequired();
+                e.Property(x => x.Kind).HasMaxLength(20).IsRequired();
                 e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
         }

@@ -348,3 +348,44 @@ export interface RacePrepGoalDetail {
   trend: RacePrepTrendPoint[];
   items: RacePrepActivityItem[];
 }
+
+// --- Digital (steps + screen time via Shortcuts) ---
+
+export interface DailyStep {
+  date: string;
+  steps: number;
+  source: string;
+  syncedAt: string;
+}
+
+export interface ScreenTimeEntry {
+  date: string;
+  appName: string;
+  kind: "app" | "website" | string;
+  minutes: number;
+  syncedAt: string;
+}
+
+export interface ScreenTimeDaySummary {
+  date: string;
+  totalMinutes: number;
+  topApps: ScreenTimeEntry[];
+}
+
+export interface DigitalOverview {
+  steps: DailyStep[];
+  screenTime: ScreenTimeDaySummary[];
+  from: string;
+  to: string;
+}
+
+export interface ShortcutsTokenStatus {
+  hasToken: boolean;
+  tokenPreview: string | null;
+  updatedAt: string | null;
+}
+
+export interface ShortcutsTokenCreated {
+  token: string;
+  tokenPreview: string;
+}
