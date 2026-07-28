@@ -13,6 +13,7 @@ import type {
   LookupType,
   MeditationSession,
   RacePrepCountGoal,
+  RacePrepGoalDetail,
   RacePrepOverview,
   SleepLog,
   SportActivity,
@@ -153,6 +154,8 @@ export const healthApi = {
 
 export const racePrepApi = {
   getOverview: () => apiClient.get<RacePrepOverview>("/race-prep/overview"),
+  getGoalDetail: (goalKey: string) =>
+    apiClient.get<RacePrepGoalDetail>(`/race-prep/goals/${goalKey}/detail`),
   incrementVisualization: () =>
     apiClient.post<RacePrepCountGoal>("/race-prep/visualization/increment"),
 };

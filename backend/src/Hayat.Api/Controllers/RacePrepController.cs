@@ -21,6 +21,15 @@ namespace Hayat.Api.Controllers
             return Ok(await _service.GetOverviewAsync(userId.Value));
         }
 
+        [HttpGet("goals/{goalKey}/detail")]
+        public async Task<IActionResult> GetGoalDetail(string goalKey)
+        {
+            var userId = GetUserId();
+            if (userId == null) return UnauthorizedUser();
+            var detail = await _service.GetGoalDetailAsync(userId.Value, goalKey);
+            return detail == null ? NotFound() : Ok(detail);
+        }
+
         [HttpPost("visualization/increment")]
         public async Task<IActionResult> IncrementVisualization()
         {
