@@ -8,9 +8,8 @@ using Hayat.Application.Interfaces;
 namespace Hayat.Api.Controllers
 {
     /// <summary>
-    /// Endpoints for iOS Shortcuts. Auth via Authorization: Bearer &lt;shortcuts-api-token&gt;
-    /// generated in Hayat → Yönetim → Shortcuts). Prefer header
-    /// <c>X-Hayat-Shortcuts-Token</c>.
+    /// Endpoints for iOS Shortcuts. Prefer header <c>X-Hayat-Shortcuts-Token</c>
+    /// (token generated in Hayat → Yönetim → Shortcuts).
     /// </summary>
     [AllowAnonymous]
     [Route("api/shortcuts")]
