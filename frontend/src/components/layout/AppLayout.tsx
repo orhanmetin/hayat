@@ -6,6 +6,7 @@ import {
   CheckSquare,
   ClipboardList,
   Trophy,
+  Smartphone,
   Settings,
   LogOut,
   Sun,
@@ -21,6 +22,7 @@ const navItems = [
   { to: "/habits", label: "Alışkanlıklar", icon: CheckSquare },
   { to: "/pusula", label: "Pusula", icon: ClipboardList },
   { to: "/race", label: "Barcelona 24h", icon: Trophy },
+  { to: "/digital", label: "Dijital", icon: Smartphone },
   { to: "/management", label: "Yönetim", icon: Settings },
 ];
 

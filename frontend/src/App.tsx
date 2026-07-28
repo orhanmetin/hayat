@@ -8,6 +8,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { LogEntryPage } from "./pages/LogEntryPage";
 import { HabitsPage } from "./pages/HabitsPage";
 import { RacePrepPage } from "./pages/RacePrepPage";
+import { DigitalPage } from "./pages/DigitalPage";
 import { PusulaPage } from "./pages/PusulaPage";
 import { PusulaReportsPage } from "./pages/PusulaReportsPage";
 import { PusulaCategoriesPanel } from "./components/management/PusulaCategoriesPanel";
@@ -15,6 +16,7 @@ import { ManagementLayout } from "./pages/management/ManagementLayout";
 import { WeeklyGoalsPanel } from "./components/management/WeeklyGoalsPanel";
 import { ActivityTypesPanel } from "./components/management/ActivityTypesPanel";
 import { AnecdotesPanel } from "./components/management/AnecdotesPanel";
+import { ShortcutsPanel } from "./components/management/ShortcutsPanel";
 
 const App: React.FC = () => {
   return (
@@ -30,6 +32,7 @@ const App: React.FC = () => {
               <Route path="/log" element={<LogEntryPage />} />
               <Route path="/habits" element={<HabitsPage />} />
               <Route path="/race" element={<RacePrepPage />} />
+              <Route path="/digital" element={<DigitalPage />} />
               <Route path="/pusula" element={<PusulaPage />} />
               <Route path="/pusula/reports" element={<PusulaReportsPage />} />
               <Route path="/management" element={<ManagementLayout />}>
@@ -38,6 +41,7 @@ const App: React.FC = () => {
                 <Route path="activity-types" element={<ActivityTypesPanel />} />
                 <Route path="anecdotes" element={<AnecdotesPanel />} />
                 <Route path="pusula-categories" element={<PusulaCategoriesPanel />} />
+                <Route path="shortcuts" element={<ShortcutsPanel />} />
               </Route>
             </Route>
           </Route>

@@ -15,6 +15,9 @@ import type {
   RacePrepCountGoal,
   RacePrepGoalDetail,
   RacePrepOverview,
+  ShortcutsTokenCreated,
+  ShortcutsTokenStatus,
+  DigitalOverview,
   SleepLog,
   SportActivity,
   StravaConnectionStatus,
@@ -191,4 +194,12 @@ export const weeklyGoalsApi = {
   get: (year: number, weekNumber: number) =>
     apiClient.get<WeeklyGoal>(`/weeklygoals?year=${year}&weekNumber=${weekNumber}`),
   upsert: (data: Record<string, unknown>) => apiClient.put<WeeklyGoal>("/weeklygoals", data),
+};
+
+export const digitalApi = {
+  getOverview: (from?: string, to?: string) =>
+    apiClient.get<DigitalOverview>("/digital/overview", { params: { from, to } }),
+  getTokenStatus: () => apiClient.get<ShortcutsTokenStatus>("/digital/shortcuts-token"),
+  createToken: () => apiClient.post<ShortcutsTokenCreated>("/digital/shortcuts-token"),
+  revokeToken: () => apiClient.delete("/digital/shortcuts-token"),
 };
