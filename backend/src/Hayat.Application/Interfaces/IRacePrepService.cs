@@ -7,5 +7,6 @@ namespace Hayat.Application.Interfaces
     {
         Task<RacePrepOverviewDto> GetOverviewAsync(int userId);
         Task<RacePrepCountGoalDto> IncrementVisualizationAsync(int userId);
+        Task<RacePrepGoalDetailDto?> GetGoalDetailAsync(int userId, string goalKey);
     }
 }

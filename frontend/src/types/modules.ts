@@ -311,3 +311,40 @@ export interface RacePrepOverview {
   sleep: RacePrepSleep;
   visualization: RacePrepCountGoal;
 }
+
+export type RacePrepGoalKey =
+  | "totalVolume"
+  | "weeklyVolume"
+  | "longRuns"
+  | "longerRuns"
+  | "marathonRuns"
+  | "backToBack"
+  | "speed"
+  | "strength"
+  | "sleep"
+  | "visualization";
+
+export interface RacePrepTrendPoint {
+  key: string;
+  label: string;
+  value: number;
+}
+
+export interface RacePrepActivityItem {
+  dateLabel: string;
+  title: string;
+  subtitle: string | null;
+  value: number | null;
+  unit: string | null;
+  link: string | null;
+}
+
+export interface RacePrepGoalDetail {
+  goalKey: string;
+  mode: "trend" | "list";
+  title: string;
+  unit: "km" | "minutes" | "count" | string;
+  targetValue: number | null;
+  trend: RacePrepTrendPoint[];
+  items: RacePrepActivityItem[];
+}

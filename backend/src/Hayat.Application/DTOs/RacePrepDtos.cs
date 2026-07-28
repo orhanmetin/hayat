@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace Hayat.Application.DTOs
 {
@@ -65,4 +66,24 @@ namespace Hayat.Application.DTOs
         RacePrepStrengthDto Strength,
         RacePrepSleepDto Sleep,
         RacePrepCountGoalDto Visualization);
+
+    /// <summary>Mode is "trend" or "list".</summary>
+    public record RacePrepGoalDetailDto(
+        string GoalKey,
+        string Mode,
+        string Title,
+        string Unit,
+        double? TargetValue,
+        IReadOnlyList<RacePrepTrendPointDto> Trend,
+        IReadOnlyList<RacePrepActivityItemDto> Items);
+
+    public record RacePrepTrendPointDto(string Key, string Label, double Value);
+
+    public record RacePrepActivityItemDto(
+        string DateLabel,
+        string Title,
+        string? Subtitle,
+        double? Value,
+        string? Unit,
+        string? Link);
 }
