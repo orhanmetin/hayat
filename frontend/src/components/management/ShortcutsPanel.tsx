@@ -183,6 +183,18 @@ export const ShortcutsPanel: React.FC = () => {
                 URL) — “Send JSON” diye bir aksiyon yok. Yöntem: POST, İstek Gövdesi: JSON.
               </li>
               <li>
+                Adımlar gövdesi:{" "}
+                <code className="text-[10px]">
+                  {"{ \"date\": \"2026-07-27\", \"steps\": 8000 }"}
+                </code>{" "}
+                veya{" "}
+                <code className="text-[10px]">
+                  {"{ \"days\": [ { \"date\": \"...\", \"steps\": 8000 } ] }"}
+                </code>
+                . Sadece üst düzey date/steps de olur; boş gövde →{" "}
+                <em>days gerekli</em> hatası.
+              </li>
+              <li>
                 Adımlar: <em>Sağlık Örneklerini Bul → Adım Sayısı</em> (son 7 gün) →{" "}
                 <code className="text-[10px]">POST /api/shortcuts/steps</code>
               </li>

@@ -28,7 +28,30 @@ Apple Health **adım** ve Screen Time **uygulama/website süresi** verisini iPho
 
 **URL:** `http://167.233.16.12/api/shortcuts/steps`
 
-### Body örneği
+### Hızlı manuel test (önce bunu yap)
+
+`days gerekli` hatası genelde gövdede `days` olmamasından gelir. Önce sabit JSON ile dene:
+
+1. **URL İçeriğini Al** → URL: `.../api/shortcuts/steps`
+2. Yöntem: **POST**
+3. Başlıklar: token + `Content-Type: application/json`
+4. **İstek Gövdesi** → **JSON**
+5. Alan ekle:
+   - Anahtar: `days` → Tip: **Dizi** (*Array*)
+   - Diziye bir öğe ekle → Tip: **Sözlük** (*Dictionary*)
+   - Sözlük alanları:
+     - `date` = `2026-07-27` (metin, `yyyy-MM-dd`)
+     - `steps` = `8000` (sayı)
+
+**Tek gün kısayolu** (dizi kurmana gerek yok):
+
+```json
+{ "date": "2026-07-27", "steps": 8000 }
+```
+
+JSON gövdede üst seviyeye doğrudan `date` + `steps` koyabilirsin; API bunu kabul eder.
+
+### Body örneği (çok gün)
 
 ```json
 {
@@ -49,8 +72,8 @@ Apple Health **adım** ve Screen Time **uygulama/website süresi** verisini iPho
 4. **Başlıklar**:
    - `X-Hayat-Shortcuts-Token` → token
    - `Content-Type` → `application/json`
-5. **İstek Gövdesi** → **JSON** (Request Body → JSON)
-6. JSON alanlarını tek tek ekle, veya önce bir **Sözlük** (*Dictionary*) oluşturup gövdeye ver
+5. **İstek Gövdesi** → **JSON** (Form / Dosya değil)
+6. Ya tek gün `{date, steps}`, ya da `days` dizisi
 
 ### Veriyi hazırlama (iskelet)
 
