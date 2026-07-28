@@ -55,7 +55,7 @@ export const DashboardPage: React.FC = () => {
   const [period, setPeriod] = useState<DashboardPeriod>("weekly");
   const [bucket, setBucket] = useState<DashboardBucket | null>(null);
   const [overview, setOverview] = useState<DashboardOverview | null>(null);
-  const [activeCard, setActiveCard] = useState<DashboardCardKey>("sport");
+  const [activeCard, setActiveCard] = useState<DashboardCardKey | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -82,6 +82,7 @@ export const DashboardPage: React.FC = () => {
   const handlePeriodChange = (next: DashboardPeriod) => {
     setPeriod(next);
     setBucket(null);
+    setActiveCard(null);
   };
 
   const bucketOptions = useMemo(() => {
@@ -187,7 +188,9 @@ export const DashboardPage: React.FC = () => {
                     meta={CARD_META[key]}
                     icon={CARD_ICONS[key]}
                     isActive={activeCard === key}
-                    onClick={() => setActiveCard(key)}
+                    onClick={() =>
+                      setActiveCard((prev) => (prev === key ? null : key))
+                    }
                     primaryMinutes={
                       key === "sport"
                         ? cards.sport.totalMinutes
