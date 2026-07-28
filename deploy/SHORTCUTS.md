@@ -28,28 +28,51 @@ Apple Health **adım** ve Screen Time **uygulama/website süresi** verisini iPho
 
 **URL:** `http://167.233.16.12/api/shortcuts/steps`
 
-### Hızlı manuel test (önce bunu yap)
+> **Kritik:** *Sağlık Örneklerini Bul* çıktısı **HTTP gövdesine otomatik gitmez.**  
+> Shortcuts “karar vermez” — `URL İçeriğini Al` içinde **İstek Gövdesi → JSON → `days`** alanına listeyi **sen bağlamalısın**.  
+> Bağlamazsan sunucu şunu döner: `JSON gövde boş`.
 
-`days gerekli` hatası genelde gövdede `days` olmamasından gelir. Önce sabit JSON ile dene:
+### Senin ekranın (Sağlık Örneklerini Bul) — doğru ayarlar
 
-1. **URL İçeriğini Al** → URL: `.../api/shortcuts/steps`
-2. Yöntem: **POST**
-3. Başlıklar: token + `Content-Type: application/json`
-4. **İstek Gövdesi** → **JSON**
-5. Alan ekle:
-   - Anahtar: `days` → Tip: **Dizi** (*Array*)
-   - Diziye bir öğe ekle → Tip: **Sözlük** (*Dictionary*)
-   - Sözlük alanları:
-     - `date` = `2026-07-27` (metin, `yyyy-MM-dd`)
-     - `steps` = `8000` (sayı)
+| Ayar | Değer |
+|------|--------|
+| Tür | Adımlar / Steps |
+| Başlangıç Tarihi | son 7 gün içinde |
+| Birim | sayı / count |
+| Şuna göre grupla | Gün / Day |
+| Eksikleri doldur | Açık |
+| Sırala | Başlangıç Tarihi, Eskiden yeniye |
 
-**Tek gün kısayolu** (dizi kurmana gerek yok):
+Bu adım sadece veriyi **toplar**. Sonraki adımlar JSON’a çevirip POST eder.
 
-```json
-{ "date": "2026-07-27", "steps": 8000 }
-```
+### Tam kısayol sırası (ekrandaki adımdan sonra)
 
-JSON gövdede üst seviyeye doğrudan `date` + `steps` koyabilirsin; API bunu kabul eder.
+1. **Değişkeni Ayarla** → ad: `GunlukAdimlar` → değer: **Liste** (boş)
+2. **Her Birinde Tekrarla** → giriş: *Sağlık Örnekleri* (önceki aksiyon)
+3. Döngü içinde:
+   1. **Sağlık Örneği Ayrıntılarını Al** → **Değer** (*Value*) → adımlar
+   2. **Sağlık Örneği Ayrıntılarını Al** → **Başlangıç Tarihi**
+   3. **Tarihi Biçimlendir** → Özel → `yyyy-MM-dd`
+   4. **Sözlük**:
+      - `date` → biçimlendirilmiş tarih
+      - `steps` → değer (sayı)
+   5. **Değişkene Ekle** → `GunlukAdimlar` ← bu sözlük
+4. **URL İçeriğini Al**
+   - URL: `http://167.233.16.12/api/shortcuts/steps`
+   - Yöntem: **POST**
+   - Başlıklar: `X-Hayat-Shortcuts-Token` + `Content-Type: application/json`
+   - **İstek Gövdesi** → **JSON**
+   - Alan: `days` = değişken **`GunlukAdimlar`**
+   - (isteğe bağlı) `source` = `shortcuts`
+
+Başarılı cevap örneği: `{ "upserted": 7, "skipped": 0 }`.
+
+### Hızlı manuel test (Health’siz)
+
+Önce sabit gövde ile API’yi doğrula:
+
+1. **URL İçeriğini Al** → POST `.../api/shortcuts/steps`
+2. İstek Gövdesi → JSON → tek alanlar: `date` = `2026-07-27`, `steps` = `8000`
 
 ### Body örneği (çok gün)
 
@@ -64,30 +87,8 @@ JSON gövdede üst seviyeye doğrudan `date` + `steps` koyabilirsin; API bunu ka
 }
 ```
 
-### URL İçeriğini Al ayarları
-
-1. Aksiyon: **URL İçeriğini Al** (*Get Contents of URL*)
-2. URL: `http://167.233.16.12/api/shortcuts/steps`
-3. **Yöntem** → `POST`
-4. **Başlıklar**:
-   - `X-Hayat-Shortcuts-Token` → token
-   - `Content-Type` → `application/json`
-5. **İstek Gövdesi** → **JSON** (Form / Dosya değil)
-6. Ya tek gün `{date, steps}`, ya da `days` dizisi
-
-### Veriyi hazırlama (iskelet)
-
-| Sıra | Türkçe aksiyon | İngilizce |
-|------|----------------|-----------|
-| 1 | Tekrar (7 kez) | Repeat |
-| 2 | Tarih (N gün geri) | Date / Adjust Date |
-| 3 | Sağlık Örneklerini Bul → Adım Sayısı | Find Health Samples → Step Count |
-| 4 | İstatistikleri Hesapla → Toplam | Calculate Statistics → Sum |
-| 5 | Sözlük `{date, steps}` | Dictionary |
-| 6 | Listeye ekle | Add to Variable / List |
-| 7 | **URL İçeriğini Al** POST JSON | Get Contents of URL |
-
 > Health izni: **Ayarlar → Kısayollar → Sağlık → Adım Sayısı** açık olmalı.
+
 
 ## 3. Ekran süresi — POST
 

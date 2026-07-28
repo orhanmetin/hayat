@@ -179,23 +179,18 @@ export const ShortcutsPanel: React.FC = () => {
                 <code className="text-[10px]">X-Hayat-Shortcuts-Token: TOKEN</code>
               </li>
               <li>
-                HTTP için aksiyon adı <strong>URL İçeriğini Al</strong> (Get Contents of
-                URL) — “Send JSON” diye bir aksiyon yok. Yöntem: POST, İstek Gövdesi: JSON.
+                HTTP: <strong>URL İçeriğini Al</strong> — Yöntem POST, İstek Gövdesi{" "}
+                <strong>JSON</strong>.
+              </li>
+              <li className="text-amber-700 dark:text-amber-300">
+                <strong>Sağlık Örneklerini Bul çıktısı gövdeye otomatik gitmez.</strong>{" "}
+                Her örnek için Sözlük {"{date, steps}"} kur → listeye ekle → JSON’da{" "}
+                <code className="text-[10px]">days</code> alanına o listeyi bağla. Aksi
+                halde <em>JSON gövde boş</em> hatası gelir.
               </li>
               <li>
-                Adımlar gövdesi:{" "}
-                <code className="text-[10px]">
-                  {"{ \"date\": \"2026-07-27\", \"steps\": 8000 }"}
-                </code>{" "}
-                veya{" "}
-                <code className="text-[10px]">
-                  {"{ \"days\": [ { \"date\": \"...\", \"steps\": 8000 } ] }"}
-                </code>
-                . Sadece üst düzey date/steps de olur; boş gövde →{" "}
-                <em>days gerekli</em> hatası.
-              </li>
-              <li>
-                Adımlar: <em>Sağlık Örneklerini Bul → Adım Sayısı</em> (son 7 gün) →{" "}
+                Adımlar: <em>Sağlık Örneklerini Bul → Adım (Güne göre grupla)</em> →{" "}
+                <em>Her Birinde Tekrarla</em> → Sözlük →{" "}
                 <code className="text-[10px]">POST /api/shortcuts/steps</code>
               </li>
               <li>
