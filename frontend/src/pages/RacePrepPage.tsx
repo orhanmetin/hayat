@@ -405,7 +405,7 @@ export const RacePrepPage: React.FC = () => {
         <GoalCard
           code="G9"
           title="Uyku"
-          subtitle="Günlük ortalama 7:30 (3 Ağustos'tan itibaren)"
+          subtitle="Günlük ortalama 7:30 (Olaylar'daki uyku kayıtları, plan başlangıcından)"
           icon={Moon}
           accentText="text-indigo-600 dark:text-indigo-400"
           accentBg="bg-indigo-500/10"

@@ -27,7 +27,6 @@ namespace Hayat.Infrastructure.Services
         // Core weeks for weekly goals: weeks 3-20 (3 Aug - 6 Dec) = 18 weeks.
         private const int CoreFirstWeek = 3;
         private const int CoreLastWeek = 20;
-        private static readonly DateOnly SleepGoalStart = new(2026, 8, 3);
 
         private const string RunTypeName = "Koşu";
         private const string StrengthTypeName = "Güç Çalışması";
@@ -156,8 +155,8 @@ namespace Hayat.Infrastructure.Services
                 StrengthTargetWeeks,
                 Pct(strengthAchievedWeeks, StrengthTargetWeeks));
 
-            // --- G9: sleep average since 3 Aug ---
-            var sleepStartUtc = AppTime.StartOfLocalDayUtc(SleepGoalStart);
+            // --- G9: sleep average from daily SleepLogs (Olaylar) since plan start ---
+            var sleepStartUtc = AppTime.StartOfLocalDayUtc(StartDate);
             var sleepLogsRaw = await _db.SleepLogs.AsNoTracking()
                 .Where(s => s.UserId == userId && s.WakeTime != null && s.WakeTime >= sleepStartUtc)
                 .Select(s => new { s.BedTime, s.WakeTime })
@@ -168,7 +167,7 @@ namespace Hayat.Infrastructure.Services
                     Date = AppTime.ToLocalDate(s.WakeTime!.Value),
                     Minutes = (int)Math.Max(0, (s.WakeTime!.Value - s.BedTime).TotalMinutes)
                 })
-                .Where(s => s.Date >= SleepGoalStart && s.Date <= today)
+                .Where(s => s.Date >= StartDate && s.Date <= today)
                 .GroupBy(s => s.Date)
                 .Select(g => g.Sum(x => x.Minutes))
                 .ToList();
