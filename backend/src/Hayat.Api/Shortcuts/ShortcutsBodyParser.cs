@@ -8,8 +8,7 @@ namespace Hayat.Api.Shortcuts
 {
     /// <summary>
     /// Parses iOS Shortcuts JSON bodies leniently: wrapped {days:[...]}, raw arrays,
-    /// or a single {date,steps} / {date,entries} object. Dates may be yyyy-MM-dd or
-    /// culture-formatted strings Shortcuts often produces.
+    /// single-day objects, or Health-Sample-like dictionaries (Value / Start Date).
     /// </summary>
     public static class ShortcutsBodyParser
     {
@@ -19,6 +18,16 @@ namespace Hayat.Api.Shortcuts
             new CultureInfo("tr-TR"),
             new CultureInfo("en-US"),
             new CultureInfo("en-GB"),
+        ];
+
+        private static readonly string[] DateKeys =
+        [
+            "date", "startDate", "start", "Start Date", "Başlangıç Tarihi", "baslangicTarihi"
+        ];
+
+        private static readonly string[] StepsKeys =
+        [
+            "steps", "value", "Value", "count", "Count", "adim", "Adım"
         ];
 
         public static UpsertDailyStepsRequest? ParseSteps(JsonElement body)
@@ -83,9 +92,9 @@ namespace Hayat.Api.Shortcuts
         {
             item = null!;
             if (el.ValueKind != JsonValueKind.Object) return false;
-            if (!TryGetProperty(el, "date", out var dateEl) || !TryParseDate(dateEl, out var date))
+            if (!TryGetPropertyAny(el, DateKeys, out var dateEl) || !TryParseDate(dateEl, out var date))
                 return false;
-            if (!TryGetProperty(el, "steps", out var stepsEl) || !TryParseInt(stepsEl, out var steps))
+            if (!TryGetPropertyAny(el, StepsKeys, out var stepsEl) || !TryParseInt(stepsEl, out var steps))
                 return false;
             item = new UpsertDailyStepItem(date, steps);
             return true;
@@ -95,7 +104,7 @@ namespace Hayat.Api.Shortcuts
         {
             day = null!;
             if (el.ValueKind != JsonValueKind.Object) return false;
-            if (!TryGetProperty(el, "date", out var dateEl) || !TryParseDate(dateEl, out var date))
+            if (!TryGetPropertyAny(el, DateKeys, out var dateEl) || !TryParseDate(dateEl, out var date))
                 return false;
 
             var entries = new List<UpsertScreenTimeItem>();
@@ -132,8 +141,24 @@ namespace Hayat.Api.Shortcuts
                 if (string.IsNullOrWhiteSpace(s)) return false;
                 s = s.Trim();
 
+                // "23541 count" is not a date — reject early if it looks like a count line.
+                if (s.Contains("count", StringComparison.OrdinalIgnoreCase) && !s.Contains(','))
+                    return false;
+
                 if (DateOnly.TryParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
                     return true;
+
+                // Shortcuts TR preview: "21.07.2026, 00:30"
+                if (DateTime.TryParseExact(
+                        s,
+                        ["dd.MM.yyyy, HH:mm", "dd.MM.yyyy HH:mm", "dd.MM.yyyy"],
+                        new CultureInfo("tr-TR"),
+                        DateTimeStyles.None,
+                        out var trDt))
+                {
+                    date = DateOnly.FromDateTime(trDt);
+                    return true;
+                }
 
                 foreach (var culture in DateCultures)
                 {
@@ -170,16 +195,33 @@ namespace Hayat.Api.Shortcuts
                 value = (int)Math.Round(d);
                 return true;
             }
-            if (el.ValueKind == JsonValueKind.String &&
-                int.TryParse(el.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out value))
-                return true;
+            if (el.ValueKind == JsonValueKind.String)
+            {
+                var s = el.GetString()?.Trim();
+                if (string.IsNullOrEmpty(s)) return false;
+                // "23541 count" → 23541
+                var first = s.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
+                if (int.TryParse(first, NumberStyles.Integer, CultureInfo.InvariantCulture, out value))
+                    return true;
+            }
+            return false;
+        }
+
+        private static bool TryGetPropertyAny(JsonElement obj, IEnumerable<string> names, out JsonElement value)
+        {
+            foreach (var name in names)
+            {
+                if (TryGetProperty(obj, name, out value))
+                    return true;
+            }
+
+            value = default;
             return false;
         }
 
         private static bool TryGetProperty(JsonElement obj, string name, out JsonElement value)
         {
             if (obj.TryGetProperty(name, out value)) return true;
-            // Case-insensitive fallback for Shortcuts dictionaries.
             foreach (var prop in obj.EnumerateObject())
             {
                 if (string.Equals(prop.Name, name, StringComparison.OrdinalIgnoreCase))
