@@ -175,15 +175,31 @@ export const ShortcutsPanel: React.FC = () => {
             <ol className="list-decimal pl-4 space-y-1.5">
               <li>Yukarıdan token oluşturup kopyalayın.</li>
               <li>
-                iPhone Shortcuts’ta header:{" "}
+                Header:{" "}
                 <code className="text-[10px]">X-Hayat-Shortcuts-Token: TOKEN</code>
               </li>
               <li>
-                Adımlar: <em>Find Health Samples → Step Count</em> (son 7 gün), günlük toplamları
-                JSON’a çevirip <code className="text-[10px]">POST /api/shortcuts/steps</code>
+                HTTP için aksiyon adı <strong>URL İçeriğini Al</strong> (Get Contents of
+                URL) — “Send JSON” diye bir aksiyon yok. Yöntem: POST, İstek Gövdesi: JSON.
               </li>
               <li>
-                Ekran: <em>Get App & Website Usage</em> (gün seç), dakikaya çevirip{" "}
+                Adımlar gövdesi:{" "}
+                <code className="text-[10px]">
+                  {"{ \"date\": \"2026-07-27\", \"steps\": 8000 }"}
+                </code>{" "}
+                veya{" "}
+                <code className="text-[10px]">
+                  {"{ \"days\": [ { \"date\": \"...\", \"steps\": 8000 } ] }"}
+                </code>
+                . Sadece üst düzey date/steps de olur; boş gövde →{" "}
+                <em>days gerekli</em> hatası.
+              </li>
+              <li>
+                Adımlar: <em>Sağlık Örneklerini Bul → Adım Sayısı</em> (son 7 gün) →{" "}
+                <code className="text-[10px]">POST /api/shortcuts/steps</code>
+              </li>
+              <li>
+                Ekran: <em>Uygulama ve Web Sitesi Kullanımını Al</em> → dakikaya çevir →{" "}
                 <code className="text-[10px]">POST /api/shortcuts/screen-time</code>
               </li>
               <li>Automation: her gün bir kez veya elle çalıştırın.</li>
