@@ -2,28 +2,33 @@
 
 Apple Health **adım** ve Screen Time **uygulama/website süresi** verisini iPhone Shortcuts ile Hayat API’sine gönderir.
 
+> **Önemli:** Shortcuts’ta “Send JSON” diye bir aksiyon **yok**.  
+> HTTP isteği için aksiyon adı: **URL İçeriğini Al** (İngilizce: *Get Contents of URL*).
+
 ## 1. Token
 
 1. Hayat web → **Yönetim → Shortcuts**
 2. **Token oluştur** → bir kez görünen anahtarı kopyala
-3. Shortcuts HTTP isteklerinde header:
+3. Her istekte header ekle:
 
-```
-X-Hayat-Shortcuts-Token: <TOKEN>
-```
+| Anahtar | Değer |
+|---------|--------|
+| `X-Hayat-Shortcuts-Token` | oluşturduğun token |
+| `Content-Type` | `application/json` |
 
-(Alternatif: `Authorization: Bearer <TOKEN>` — JWT ile karışmasın diye özel header tercih edilir.)
+### Hızlı test (ping)
 
-Test:
+1. Yeni Shortcut → aksiyon ara: **URL İçeriğini Al**
+2. URL: `http://167.233.16.12/api/shortcuts/ping`
+3. Yöntem: **GET**
+4. Başlıklar: `X-Hayat-Shortcuts-Token` = token
+5. Çalıştır → `{ "ok": true, ... }` benzeri cevap gelmeli
 
-```
-GET https://SENIN_DOMAIN_VEYA_IP/api/shortcuts/ping
-Header: X-Hayat-Shortcuts-Token: <TOKEN>
-```
+## 2. Adımlar (son 7 gün) — POST
 
-## 2. Adımlar (son 7 gün)
+**URL:** `http://167.233.16.12/api/shortcuts/steps`
 
-**Endpoint:** `POST /api/shortcuts/steps`
+### Body örneği
 
 ```json
 {
@@ -36,21 +41,36 @@ Header: X-Hayat-Shortcuts-Token: <TOKEN>
 }
 ```
 
-### Shortcut iskeleti
+### URL İçeriğini Al ayarları
 
-1. `Repeat` 7 kez (0…6) — her iterasyonda bir gün
-2. `Date` → Adjust by −N days
-3. `Find Health Samples` → **Step Count**, Start Date is that day
-4. `Calculate Statistics` → Sum (veya örnekleri topla)
-5. Dictionary’ye `{date, steps}` ekle
-6. Döngü bitince JSON body oluştur
-7. `Get Contents of URL` → POST, headers Authorization + Content-Type `application/json`
+1. Aksiyon: **URL İçeriğini Al** (*Get Contents of URL*)
+2. URL: `http://167.233.16.12/api/shortcuts/steps`
+3. **Yöntem** → `POST`
+4. **Başlıklar**:
+   - `X-Hayat-Shortcuts-Token` → token
+   - `Content-Type` → `application/json`
+5. **İstek Gövdesi** → **JSON** (Request Body → JSON)
+6. JSON alanlarını tek tek ekle, veya önce bir **Sözlük** (*Dictionary*) oluşturup gövdeye ver
 
-> Health izni: Ayarlar → Shortcuts → Health → Step Count açık olmalı.
+### Veriyi hazırlama (iskelet)
 
-## 3. Ekran süresi (uygulama dakikaları)
+| Sıra | Türkçe aksiyon | İngilizce |
+|------|----------------|-----------|
+| 1 | Tekrar (7 kez) | Repeat |
+| 2 | Tarih (N gün geri) | Date / Adjust Date |
+| 3 | Sağlık Örneklerini Bul → Adım Sayısı | Find Health Samples → Step Count |
+| 4 | İstatistikleri Hesapla → Toplam | Calculate Statistics → Sum |
+| 5 | Sözlük `{date, steps}` | Dictionary |
+| 6 | Listeye ekle | Add to Variable / List |
+| 7 | **URL İçeriğini Al** POST JSON | Get Contents of URL |
 
-**Endpoint:** `POST /api/shortcuts/screen-time`
+> Health izni: **Ayarlar → Kısayollar → Sağlık → Adım Sayısı** açık olmalı.
+
+## 3. Ekran süresi — POST
+
+**URL:** `http://167.233.16.12/api/shortcuts/screen-time`
+
+### Body örneği
 
 ```json
 {
@@ -67,22 +87,34 @@ Header: X-Hayat-Shortcuts-Token: <TOKEN>
 }
 ```
 
-### Shortcut iskeleti
+### URL İçeriğini Al ayarları
 
-1. `Get App & Website Usage` (iOS’ta Screen Time verisi; gün seç)
-2. Her öğe için süre → **dakikaya** çevir (`Duration` → minutes)
-3. `{ appName, minutes, kind }` listesi kur (`kind`: `app` veya `website`)
-4. Body: `{ "days": [ { "date": "YYYY-MM-DD", "entries": [...] } ] }`
-5. `POST /api/shortcuts/screen-time`
+Aynı şekilde **POST** + header’lar + **İstek Gövdesi = JSON**.
 
-> Aynı güne tekrar gönderirsen o günün kayıtları **yeniden yazılır** (replace).
-> Son 30 günden eski tarihler yok sayılır.
+### Veriyi hazırlama
+
+| Sıra | Türkçe aksiyon | İngilizce |
+|------|----------------|-----------|
+| 1 | Uygulama ve Web Sitesi Kullanımını Al | Get App & Website Usage |
+| 2 | Süreleri dakikaya çevir | Convert / Get Duration |
+| 3 | Sözlük listesi kur | Dictionary / List |
+| 4 | **URL İçeriğini Al** POST | Get Contents of URL |
+
+> Aynı güne tekrar gönderirsen o gün **yeniden yazılır**.  
+> 30 günden eski tarihler yok sayılır.
 
 ## 4. Otomasyon
 
-Shortcuts → Automation → Time of Day (ör. 22:30) → shortcut’u çalıştır.  
-Mümkünse **Ask Before Running** kapalı (iOS sürümüne göre arka plan kısıtı olabilir; gerekirse bildirime dokunman gerekir).
+Kısayollar → **Otomasyon** → Günün Saati (ör. 22:30) → shortcut’u çalıştır.
 
 ## 5. Hayat’ta görme
 
-**Dijital** menüsü → son 7 gün adım grafiği + ekran süresi + uygulama kırılımı.
+**Dijital** menüsü → adım + ekran süresi grafikleri.
+
+## Sık karıştırılan isimler
+
+| Aradığın | Gerçek aksiyon (TR) | Gerçek aksiyon (EN) |
+|----------|---------------------|---------------------|
+| Send JSON / Send Request | **URL İçeriğini Al** | Get Contents of URL |
+| Dictionary / Object | **Sözlük** | Dictionary |
+| HTTP POST | URL İçeriğini Al → Yöntem: POST | Get Contents of URL → Method: POST |
