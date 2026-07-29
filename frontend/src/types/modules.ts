@@ -122,11 +122,26 @@ export interface MeditationCard {
   targetAverageMinutesPerDay: number | null;
 }
 
+export interface StepsCard {
+  totalSteps: number;
+  averageStepsPerDay: number;
+  targetAverageStepsPerDay: number | null;
+}
+
+export interface ScreenTimeCard {
+  totalMinutes: number;
+  averageMinutesPerDay: number;
+  targetAverageMinutesPerDay: number | null;
+  breakdown: CategoryBreakdownItem[];
+}
+
 export interface DashboardCards {
   sport: SportCard;
   sleep: SleepCard;
   deepWork: DeepWorkCard;
   meditation: MeditationCard;
+  steps: StepsCard;
+  screenTime: ScreenTimeCard;
 }
 
 export interface TimeBucketValue {
@@ -152,6 +167,9 @@ export interface DashboardSeries {
   meditation: TimeBucketValue[];
   sport: StackedSeries;
   deepWork: StackedSeries;
+  steps: TimeBucketValue[];
+  screenTime: TimeBucketValue[];
+  screenTimeByApp: StackedSeries;
 }
 
 export interface DashboardOverview {
@@ -174,15 +192,21 @@ export interface WeeklyGoal {
   targetTotalSportMinutes?: number;
   targetAvgDeepWorkMinutesPerDay?: number;
   targetAvgMeditationMinutesPerDay?: number;
+  targetAvgStepsPerDay?: number;
+  targetAvgScreenMinutesPerDay?: number;
   progress: {
     sleepProgress: number;
     sportProgress: number;
     deepWorkProgress: number;
     meditationProgress: number;
+    stepsProgress: number;
+    screenProgress: number;
     currentAvgSleepMinutes: number;
     currentTotalSportMinutes: number;
     currentAvgDeepWorkMinutes: number;
     currentAvgMeditationMinutes: number;
+    currentAvgSteps: number;
+    currentAvgScreenMinutes: number;
   };
 }
 

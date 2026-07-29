@@ -292,6 +292,22 @@ namespace Hayat.Infrastructure.Data
                     """);
                 logger?.LogInformation("Created ScreenTimeLogs table.");
             }
+
+            if (TableExists(context, "WeeklyGoals") && !ColumnExists(context, "WeeklyGoals", "TargetAvgStepsPerDay"))
+            {
+                context.Database.ExecuteSqlRaw("""
+                    ALTER TABLE "WeeklyGoals" ADD COLUMN "TargetAvgStepsPerDay" INTEGER NULL;
+                    """);
+                logger?.LogInformation("Added TargetAvgStepsPerDay to WeeklyGoals.");
+            }
+
+            if (TableExists(context, "WeeklyGoals") && !ColumnExists(context, "WeeklyGoals", "TargetAvgScreenMinutesPerDay"))
+            {
+                context.Database.ExecuteSqlRaw("""
+                    ALTER TABLE "WeeklyGoals" ADD COLUMN "TargetAvgScreenMinutesPerDay" INTEGER NULL;
+                    """);
+                logger?.LogInformation("Added TargetAvgScreenMinutesPerDay to WeeklyGoals.");
+            }
         }
 
         private static void EnsureMeditationTypesSchema(AppDbContext context, ILogger? logger)
