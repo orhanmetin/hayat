@@ -194,8 +194,12 @@ export const ShortcutsPanel: React.FC = () => {
                 <code className="text-[10px]">POST /api/shortcuts/steps</code>
               </li>
               <li>
-                Ekran: <em>Uygulama ve Web Sitesi Kullanımını Al</em> → dakikaya çevir →{" "}
-                <code className="text-[10px]">POST /api/shortcuts/screen-time</code>
+                Ekran: JSON{" "}
+                <code className="text-[10px]">
+                  {"{ \"date\": \"...\", \"apps\": [\"Chrome (33m)\", \"Shortcuts (2h 5m)\"] }"}
+                </code>{" "}
+                → <code className="text-[10px]">POST /api/shortcuts/screen-time</code>. Website
+                yok; süre metnini API dakikaya çevirir.
               </li>
               <li>Automation: her gün bir kez veya elle çalıştırın.</li>
             </ol>
