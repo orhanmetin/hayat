@@ -134,7 +134,8 @@ Kısayollar → **Otomasyon** → Günün Saati (ör. 22:30) → shortcut’u ç
 
 ## 5. Hayat’ta görme
 
-**Dijital** menüsü → adım + ekran süresi grafikleri.
+**Dashboard** → Adım ve Ekran kartları (tıklayınca trend).  
+Hedefler: **Yönetim → Haftalık Hedefler**.
 
 ## Sık karıştırılan isimler
 

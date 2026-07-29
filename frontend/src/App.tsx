@@ -8,7 +8,6 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { LogEntryPage } from "./pages/LogEntryPage";
 import { HabitsPage } from "./pages/HabitsPage";
 import { RacePrepPage } from "./pages/RacePrepPage";
-import { DigitalPage } from "./pages/DigitalPage";
 import { PusulaPage } from "./pages/PusulaPage";
 import { PusulaReportsPage } from "./pages/PusulaReportsPage";
 import { PusulaCategoriesPanel } from "./components/management/PusulaCategoriesPanel";
@@ -32,7 +31,7 @@ const App: React.FC = () => {
               <Route path="/log" element={<LogEntryPage />} />
               <Route path="/habits" element={<HabitsPage />} />
               <Route path="/race" element={<RacePrepPage />} />
-              <Route path="/digital" element={<DigitalPage />} />
+              <Route path="/digital" element={<Navigate to="/" replace />} />
               <Route path="/pusula" element={<PusulaPage />} />
               <Route path="/pusula/reports" element={<PusulaReportsPage />} />
               <Route path="/management" element={<ManagementLayout />}>

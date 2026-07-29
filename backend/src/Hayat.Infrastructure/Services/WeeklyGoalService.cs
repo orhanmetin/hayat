@@ -55,6 +55,8 @@ namespace Hayat.Infrastructure.Services
             goal.TargetTotalSportMinutes = request.TargetTotalSportMinutes;
             goal.TargetAvgDeepWorkMinutesPerDay = request.TargetAvgDeepWorkMinutesPerDay;
             goal.TargetAvgMeditationMinutesPerDay = request.TargetAvgMeditationMinutesPerDay;
+            goal.TargetAvgStepsPerDay = request.TargetAvgStepsPerDay;
+            goal.TargetAvgScreenMinutesPerDay = request.TargetAvgScreenMinutesPerDay;
 
             await _db.SaveChangesAsync();
             var progress = await CalculateProgressAsync(userId, request.Year, request.WeekNumber);
@@ -87,14 +89,29 @@ namespace Hayat.Infrastructure.Services
                 .Select(g => g.Sum(x => x.DurationMinutes))
                 .ToListAsync();
 
+            var stepDays = await _db.DailyStepLogs.AsNoTracking()
+                .Where(s => s.UserId == userId && s.Date >= start && s.Date <= end)
+                .Select(s => s.Steps)
+                .ToListAsync();
+
+            var screenByDay = await _db.ScreenTimeLogs.AsNoTracking()
+                .Where(s => s.UserId == userId && s.Date >= start && s.Date <= end)
+                .GroupBy(s => s.Date)
+                .Select(g => g.Sum(x => x.Minutes))
+                .ToListAsync();
+
             var avgSleep = sleepLogs.Count > 0
                 ? (int)sleepLogs.Average(s => s.DurationMinutes)
                 : 0;
 
             var avgDeepWork = deepWorkByDay.Count > 0 ? (int)deepWorkByDay.Average() : 0;
             var avgMeditation = meditationByDay.Count > 0 ? (int)meditationByDay.Average() : 0;
+            var avgSteps = stepDays.Count > 0 ? (int)stepDays.Average() : 0;
+            var avgScreen = screenByDay.Count > 0 ? (int)screenByDay.Average() : 0;
 
-            return new WeeklyGoalProgressDto(0, 0, 0, 0, avgSleep, sportTotal, avgDeepWork, avgMeditation);
+            return new WeeklyGoalProgressDto(
+                0, 0, 0, 0, 0, 0,
+                avgSleep, sportTotal, avgDeepWork, avgMeditation, avgSteps, avgScreen);
         }
 
         private static WeeklyGoalDto MapGoal(WeeklyGoal goal, WeeklyGoalProgressDto progress)
@@ -107,7 +124,9 @@ namespace Hayat.Infrastructure.Services
                 SleepProgress = Pct(progress.CurrentAvgSleepMinutes, goal.TargetAvgSleepMinutesPerDay),
                 SportProgress = Pct(progress.CurrentTotalSportMinutes, goal.TargetTotalSportMinutes),
                 DeepWorkProgress = Pct(progress.CurrentAvgDeepWorkMinutes, goal.TargetAvgDeepWorkMinutesPerDay),
-                MeditationProgress = Pct(progress.CurrentAvgMeditationMinutes, goal.TargetAvgMeditationMinutesPerDay)
+                MeditationProgress = Pct(progress.CurrentAvgMeditationMinutes, goal.TargetAvgMeditationMinutesPerDay),
+                StepsProgress = Pct(progress.CurrentAvgSteps, goal.TargetAvgStepsPerDay),
+                ScreenProgress = Pct(progress.CurrentAvgScreenMinutes, goal.TargetAvgScreenMinutesPerDay)
             };
 
             return new WeeklyGoalDto(
@@ -116,6 +135,8 @@ namespace Hayat.Infrastructure.Services
                 goal.TargetTotalSportMinutes,
                 goal.TargetAvgDeepWorkMinutesPerDay,
                 goal.TargetAvgMeditationMinutesPerDay,
+                goal.TargetAvgStepsPerDay,
+                goal.TargetAvgScreenMinutesPerDay,
                 enriched);
         }
     }

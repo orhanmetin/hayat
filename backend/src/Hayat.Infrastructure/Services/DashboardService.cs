@@ -86,7 +86,9 @@ namespace Hayat.Infrastructure.Services
                 new("Uyku (dk)", overview.Series.Sleep.Select(p => new ChartDataPointDto(p.Label, p.Minutes)).ToList()),
                 new("Spor (dk)", overview.Series.Sport.Buckets.Select(b => new ChartDataPointDto(b.Label, b.Total)).ToList()),
                 new("Meditasyon (dk)", overview.Series.Meditation.Select(p => new ChartDataPointDto(p.Label, p.Minutes)).ToList()),
-                new("Deep Work (dk)", overview.Series.DeepWork.Buckets.Select(b => new ChartDataPointDto(b.Label, b.Total)).ToList())
+                new("Deep Work (dk)", overview.Series.DeepWork.Buckets.Select(b => new ChartDataPointDto(b.Label, b.Total)).ToList()),
+                new("Adım", overview.Series.Steps.Select(p => new ChartDataPointDto(p.Label, p.Minutes)).ToList()),
+                new("Ekran (dk)", overview.Series.ScreenTime.Select(p => new ChartDataPointDto(p.Label, p.Minutes)).ToList())
             };
             return new DashboardAnalyticsDto(overview.Period, charts);
         }
@@ -166,6 +168,16 @@ namespace Hayat.Infrastructure.Services
                 .Select(s => new { s.Date, s.DurationMinutes })
                 .ToListAsync();
 
+            var stepRows = await _db.DailyStepLogs.AsNoTracking()
+                .Where(s => s.UserId == userId && s.Date >= rangeStart && s.Date <= today)
+                .Select(s => new { s.Date, s.Steps })
+                .ToListAsync();
+
+            var screenRows = await _db.ScreenTimeLogs.AsNoTracking()
+                .Where(s => s.UserId == userId && s.Date >= rangeStart && s.Date <= today)
+                .Select(s => new { s.Date, s.AppName, s.Minutes })
+                .ToListAsync();
+
             // ---- Card aggregates ----
             var sportTotal = sportRows.Sum(s => s.DurationMinutes);
             var sportBreakdown = sportRows
@@ -192,7 +204,26 @@ namespace Hayat.Infrastructure.Services
             var meditationDaysWithData = meditationRows.Select(s => s.Date).Distinct().Count();
             var meditationAvg = meditationDaysWithData > 0 ? meditationTotal / meditationDaysWithData : 0;
 
+            var stepsTotal = stepRows.Sum(s => s.Steps);
+            var stepsDaysWithData = stepRows.Select(s => s.Date).Distinct().Count();
+            var stepsAvg = stepsDaysWithData > 0 ? stepsTotal / stepsDaysWithData : 0;
+
+            var screenDailyTotals = screenRows
+                .GroupBy(s => s.Date)
+                .Select(g => new { Date = g.Key, Minutes = g.Sum(x => x.Minutes) })
+                .ToList();
+            var screenTotal = screenDailyTotals.Sum(s => s.Minutes);
+            var screenDaysWithData = screenDailyTotals.Count;
+            var screenAvg = screenDaysWithData > 0 ? screenTotal / screenDaysWithData : 0;
+            var screenBreakdown = screenRows
+                .GroupBy(s => s.AppName)
+                .Select(g => new CategoryBreakdownItemDto(g.Key, g.Sum(x => x.Minutes)))
+                .OrderByDescending(b => b.Minutes)
+                .Take(8)
+                .ToList();
+
             int? sleepTarget = null, sportTarget = null, deepWorkTarget = null, meditationTarget = null;
+            int? stepsTarget = null, screenTarget = null;
             if (showTargets)
             {
                 var (year, week) = WeekHelper.GetIsoWeek(today);
@@ -204,13 +235,15 @@ namespace Hayat.Infrastructure.Services
                     sportTarget = goal.TargetTotalSportMinutes;
                     deepWorkTarget = goal.TargetAvgDeepWorkMinutesPerDay;
                     meditationTarget = goal.TargetAvgMeditationMinutesPerDay;
+                    stepsTarget = goal.TargetAvgStepsPerDay;
+                    screenTarget = goal.TargetAvgScreenMinutesPerDay;
                 }
             }
 
             // ---- Buckets ----
             var bucketDefs = BuildBuckets(rangeStart, today, normalizedPeriod, normalizedBucket);
 
-            // Sleep / meditation / deep work charts use daily averages for weekly & monthly buckets.
+            // Sleep / meditation / deep work / steps / screen charts use daily averages for weekly & monthly buckets.
             var chartUsesDailyAverage = normalizedBucket != "daily";
 
             var sleepSeries = BuildSimpleSeries(
@@ -221,15 +254,27 @@ namespace Hayat.Infrastructure.Services
                 bucketDefs, sportRows.Select(r => (r.Date, r.TypeName, r.DurationMinutes)));
             var deepWorkStacked = BuildStackedSeries(
                 bucketDefs, deepWorkRows.Select(r => (r.Date, r.TypeName, r.DurationMinutes)), chartUsesDailyAverage);
+            var stepsSeries = BuildSimpleSeries(
+                bucketDefs, stepRows.Select(r => (r.Date, r.Steps)), chartUsesDailyAverage);
+            var screenSeries = BuildSimpleSeries(
+                bucketDefs, screenDailyTotals.Select(r => (r.Date, r.Minutes)), chartUsesDailyAverage);
+            var screenByAppStacked = BuildStackedSeries(
+                bucketDefs,
+                CollapseToTopApps(screenRows.Select(r => (r.Date, r.AppName, r.Minutes)), topN: 8),
+                chartUsesDailyAverage);
 
             var cards = new DashboardCardsDto(
                 new SportCardDto(sportTotal, sportTarget, sportBreakdown),
                 new SleepCardDto(sleepTotal, sleepAvg, sleepTarget),
                 new DeepWorkCardDto(deepWorkTotal, deepWorkAvg, deepWorkTarget, deepWorkBreakdown),
-                new MeditationCardDto(meditationTotal, meditationAvg, meditationTarget)
+                new MeditationCardDto(meditationTotal, meditationAvg, meditationTarget),
+                new StepsCardDto(stepsTotal, stepsAvg, stepsTarget),
+                new ScreenTimeCardDto(screenTotal, screenAvg, screenTarget, screenBreakdown)
             );
 
-            var series = new DashboardSeriesDto(sleepSeries, meditationSeries, sportStacked, deepWorkStacked);
+            var series = new DashboardSeriesDto(
+                sleepSeries, meditationSeries, sportStacked, deepWorkStacked,
+                stepsSeries, screenSeries, screenByAppStacked);
 
             return new DashboardOverviewDto(
                 normalizedPeriod,
@@ -242,6 +287,28 @@ namespace Hayat.Infrastructure.Services
                 cards,
                 series
             );
+        }
+
+        /// <summary>Keep top N apps by total minutes; fold the rest into "Diğer".</summary>
+        private static List<(DateOnly Date, string TypeName, int Minutes)> CollapseToTopApps(
+            IEnumerable<(DateOnly Date, string TypeName, int Minutes)> data,
+            int topN)
+        {
+            var list = data.ToList();
+            var top = list
+                .GroupBy(d => d.TypeName)
+                .Select(g => new { Name = g.Key, Total = g.Sum(x => x.Minutes) })
+                .OrderByDescending(g => g.Total)
+                .Take(topN)
+                .Select(g => g.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            return list
+                .Select(d => (
+                    d.Date,
+                    TypeName: top.Contains(d.TypeName) ? d.TypeName : "Diğer",
+                    d.Minutes))
+                .ToList();
         }
 
         // ---- Bucket helpers ----

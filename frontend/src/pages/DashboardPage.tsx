@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Activity, MoonStar, Brain, Flower2 } from "lucide-react";
+import { Activity, MoonStar, Brain, Flower2, Footprints, Smartphone } from "lucide-react";
 import { dashboardApi } from "../services/modules";
 import { formatDate } from "../lib/format";
-import { cn } from "../lib/utils";
 import {
   DASHBOARD_PERIODS,
   BUCKET_LABELS,
@@ -20,21 +19,23 @@ import type {
   DashboardPeriod,
 } from "../types/modules";
 
-const CARD_KEYS: DashboardCardKey[] = ["sport", "sleep", "deepwork", "meditation"];
+const CARD_KEYS: DashboardCardKey[] = [
+  "sport",
+  "sleep",
+  "deepwork",
+  "meditation",
+  "steps",
+  "screen",
+];
 
 const CARD_ICONS = {
   sport: Activity,
   sleep: MoonStar,
   deepwork: Brain,
   meditation: Flower2,
+  steps: Footprints,
+  screen: Smartphone,
 } as const;
-
-const LG_COL_START: Record<DashboardCardKey, string> = {
-  sport: "lg:col-start-1",
-  sleep: "lg:col-start-2",
-  deepwork: "lg:col-start-3",
-  meditation: "lg:col-start-4",
-};
 
 const PERIOD_PRIMARY_LABEL: Record<DashboardPeriod, Record<"total" | "averagePerDay", string>> = {
   weekly: {
@@ -50,6 +51,49 @@ const PERIOD_PRIMARY_LABEL: Record<DashboardPeriod, Record<"total" | "averagePer
     averagePerDay: "Günlük ortalama",
   },
 };
+
+function cardPrimary(overview: DashboardOverview, key: DashboardCardKey): number {
+  const { cards } = overview;
+  switch (key) {
+    case "sport":
+      return cards.sport.totalMinutes;
+    case "sleep":
+      return cards.sleep.averageMinutesPerDay;
+    case "deepwork":
+      return cards.deepWork.averageMinutesPerDay;
+    case "meditation":
+      return cards.meditation.averageMinutesPerDay;
+    case "steps":
+      return cards.steps.averageStepsPerDay;
+    case "screen":
+      return cards.screenTime.averageMinutesPerDay;
+  }
+}
+
+function cardTarget(overview: DashboardOverview, key: DashboardCardKey): number | null {
+  const { cards } = overview;
+  switch (key) {
+    case "sport":
+      return cards.sport.targetMinutes;
+    case "sleep":
+      return cards.sleep.targetAverageMinutesPerDay;
+    case "deepwork":
+      return cards.deepWork.targetAverageMinutesPerDay;
+    case "meditation":
+      return cards.meditation.targetAverageMinutesPerDay;
+    case "steps":
+      return cards.steps.targetAverageStepsPerDay;
+    case "screen":
+      return cards.screenTime.targetAverageMinutesPerDay;
+  }
+}
+
+function cardBreakdown(overview: DashboardOverview, key: DashboardCardKey) {
+  if (key === "sport") return overview.cards.sport.breakdown;
+  if (key === "deepwork") return overview.cards.deepWork.breakdown;
+  if (key === "screen") return overview.cards.screenTime.breakdown;
+  return undefined;
+}
 
 export const DashboardPage: React.FC = () => {
   const [period, setPeriod] = useState<DashboardPeriod>("weekly");
@@ -90,13 +134,12 @@ export const DashboardPage: React.FC = () => {
     return overview.availableBuckets.map((id) => ({ id, label: BUCKET_LABELS[id] }));
   }, [overview]);
 
-  const cards = overview?.cards;
-  const series = overview?.series;
   const showTargets = overview?.showTargets ?? false;
   const primaryLabels = PERIOD_PRIMARY_LABEL[period];
 
   const renderChart = (key: DashboardCardKey) => {
-    if (!overview || !series) return null;
+    if (!overview) return null;
+    const { series, cards } = overview;
     if (key === "sport") return <StackedBarChart series={series.sport} />;
     if (key === "deepwork") return <StackedBarChart series={series.deepWork} />;
     if (key === "sleep") {
@@ -104,27 +147,54 @@ export const DashboardPage: React.FC = () => {
         <SimpleBarChart
           data={series.sleep}
           color={CARD_META.sleep.primaryColor}
-          targetMinutes={
-            showTargets ? cards?.sleep.targetAverageMinutesPerDay : null
-          }
+          targetValue={showTargets ? cards.sleep.targetAverageMinutesPerDay : null}
           targetLabel="Günlük hedef"
         />
       );
     }
+    if (key === "meditation") {
+      return (
+        <SimpleBarChart
+          data={series.meditation}
+          color={CARD_META.meditation.primaryColor}
+          targetValue={showTargets ? cards.meditation.targetAverageMinutesPerDay : null}
+          targetLabel="Günlük hedef"
+        />
+      );
+    }
+    if (key === "steps") {
+      return (
+        <SimpleBarChart
+          data={series.steps}
+          color={CARD_META.steps.primaryColor}
+          targetValue={showTargets ? cards.steps.targetAverageStepsPerDay : null}
+          targetLabel="Günlük hedef"
+          unit="steps"
+        />
+      );
+    }
+    // screen: total + by-app
     return (
-      <SimpleBarChart
-        data={series.meditation}
-        color={CARD_META.meditation.primaryColor}
-        targetMinutes={
-          showTargets ? cards?.meditation.targetAverageMinutesPerDay : null
-        }
-        targetLabel="Günlük hedef"
-      />
+      <div className="space-y-6">
+        <div>
+          <p className="text-xs font-semibold text-slate-500 mb-2">Günlük toplam</p>
+          <SimpleBarChart
+            data={series.screenTime}
+            color={CARD_META.screen.primaryColor}
+            targetValue={showTargets ? cards.screenTime.targetAverageMinutesPerDay : null}
+            targetLabel="Günlük hedef"
+          />
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-slate-500 mb-2">Uygulama bazında</p>
+          <StackedBarChart series={series.screenTimeByApp} />
+        </div>
+      </div>
     );
   };
 
   const renderTrendPanel = (key: DashboardCardKey) => (
-    <div className="p-4 md:p-6 rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5 space-y-4 col-span-full sm:col-span-2 lg:col-span-4 lg:row-start-2 lg:col-start-1">
+    <div className="p-4 md:p-6 rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5 space-y-4 col-span-full sm:col-span-2 lg:col-span-3 lg:col-start-1">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -179,54 +249,32 @@ export const DashboardPage: React.FC = () => {
 
       {loading && !overview ? (
         <p className="text-center text-slate-400 py-8">Yükleniyor...</p>
-      ) : overview && cards ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
-            {CARD_KEYS.map((key) => (
-              <React.Fragment key={key}>
-                <div className={cn("min-h-0 lg:row-start-1", LG_COL_START[key])}>
-                  <SummaryCard
-                    meta={CARD_META[key]}
-                    icon={CARD_ICONS[key]}
-                    isActive={activeCard === key}
-                    onClick={() =>
-                      setActiveCard((prev) => (prev === key ? null : key))
-                    }
-                    primaryMinutes={
-                      key === "sport"
-                        ? cards.sport.totalMinutes
-                        : key === "sleep"
-                          ? cards.sleep.averageMinutesPerDay
-                          : key === "deepwork"
-                            ? cards.deepWork.averageMinutesPerDay
-                            : cards.meditation.averageMinutesPerDay
-                    }
-                    primaryLabel={
-                      CARD_META[key].metric === "total"
-                        ? primaryLabels.total
-                        : primaryLabels.averagePerDay
-                    }
-                    targetMinutes={
-                      key === "sport"
-                        ? cards.sport.targetMinutes
-                        : key === "sleep"
-                          ? cards.sleep.targetAverageMinutesPerDay
-                          : key === "deepwork"
-                            ? cards.deepWork.targetAverageMinutesPerDay
-                            : cards.meditation.targetAverageMinutesPerDay
-                    }
-                    showTarget={showTargets}
-                    breakdown={
-                      key === "sport"
-                        ? cards.sport.breakdown
-                        : key === "deepwork"
-                          ? cards.deepWork.breakdown
-                          : undefined
-                    }
-                  />
-                </div>
-                {activeCard === key && renderTrendPanel(key)}
-              </React.Fragment>
-            ))}
+      ) : overview ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
+          {CARD_KEYS.map((key) => (
+            <React.Fragment key={key}>
+              <div className="min-h-0">
+                <SummaryCard
+                  meta={CARD_META[key]}
+                  icon={CARD_ICONS[key]}
+                  isActive={activeCard === key}
+                  onClick={() =>
+                    setActiveCard((prev) => (prev === key ? null : key))
+                  }
+                  primaryValue={cardPrimary(overview, key)}
+                  primaryLabel={
+                    CARD_META[key].metric === "total"
+                      ? primaryLabels.total
+                      : primaryLabels.averagePerDay
+                  }
+                  targetValue={cardTarget(overview, key)}
+                  showTarget={showTargets}
+                  breakdown={cardBreakdown(overview, key)}
+                />
+              </div>
+              {activeCard === key && renderTrendPanel(key)}
+            </React.Fragment>
+          ))}
         </div>
       ) : null}
     </div>

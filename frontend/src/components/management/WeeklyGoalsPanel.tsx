@@ -8,13 +8,21 @@ import { formatDate } from "../../lib/format";
 import { joinToTotalMinutes, splitTotalMinutes } from "../../lib/duration";
 import type { WeeklyGoal } from "../../types/modules";
 
-type GoalFormState = Record<string, { hours: number; minutes: number }>;
+type GoalFormState = Record<
+  string,
+  { hours: number; minutes: number; steps: number }
+>;
 
 function goalStateFromWeeklyGoal(goal: WeeklyGoal | null): GoalFormState {
   const state: GoalFormState = {};
   for (const def of GOAL_TARGET_DEFINITIONS) {
-    const targetMinutes = goal?.[def.targetKey] as number | undefined;
-    state[def.id] = splitTotalMinutes(targetMinutes);
+    const target = (goal?.[def.targetKey] as number | undefined) ?? 0;
+    if (def.input === "steps") {
+      state[def.id] = { hours: 0, minutes: 0, steps: target };
+    } else {
+      const parts = splitTotalMinutes(target);
+      state[def.id] = { ...parts, steps: 0 };
+    }
   }
   return state;
 }
@@ -55,7 +63,11 @@ export const WeeklyGoalsPanel: React.FC = () => {
     load();
   }, []);
 
-  const updateGoalPart = (id: string, part: "hours" | "minutes", value: number) => {
+  const updateGoalPart = (
+    id: string,
+    part: "hours" | "minutes" | "steps",
+    value: number
+  ) => {
     setGoalForm((prev) => ({
       ...prev,
       [id]: { ...prev[id], [part]: value },
@@ -73,8 +85,11 @@ export const WeeklyGoalsPanel: React.FC = () => {
         weekNumber: weekInfo.weekNumber,
       };
       for (const def of GOAL_TARGET_DEFINITIONS) {
-        const part = goalForm[def.id] ?? { hours: 0, minutes: 0 };
-        payload[def.targetKey] = joinToTotalMinutes(part.hours, part.minutes);
+        const part = goalForm[def.id] ?? { hours: 0, minutes: 0, steps: 0 };
+        payload[def.targetKey] =
+          def.input === "steps"
+            ? Math.max(0, Math.round(part.steps))
+            : joinToTotalMinutes(part.hours, part.minutes);
       }
       await weeklyGoalsApi.upsert(payload);
       await load();
@@ -102,7 +117,39 @@ export const WeeklyGoalsPanel: React.FC = () => {
 
       <form onSubmit={saveGoals} className="space-y-4">
         {GOAL_TARGET_DEFINITIONS.map((def) => {
-          const part = goalForm[def.id] ?? { hours: 0, minutes: 0 };
+          const part = goalForm[def.id] ?? { hours: 0, minutes: 0, steps: 0 };
+          if (def.input === "steps") {
+            return (
+              <div
+                key={def.id}
+                className="rounded-xl border border-slate-200 dark:border-white/10 p-4 space-y-2"
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold">{def.label}</p>
+                    <p className="text-xs text-slate-500">{def.description}</p>
+                  </div>
+                  <span className="text-[10px] uppercase tracking-wide text-slate-400">
+                    {def.periodLabel}
+                  </span>
+                </div>
+                <label className="block text-xs text-slate-500">
+                  Hedef (adım / gün)
+                  <input
+                    type="number"
+                    min={0}
+                    step={100}
+                    value={part.steps || ""}
+                    onChange={(e) =>
+                      updateGoalPart(def.id, "steps", Number(e.target.value) || 0)
+                    }
+                    className="mt-1 w-full rounded-xl border border-slate-200 dark:border-white/10 bg-transparent px-3 py-2 text-sm"
+                    placeholder="örn. 8000"
+                  />
+                </label>
+              </div>
+            );
+          }
           return (
             <DurationHoursMinutesInput
               key={def.id}
@@ -144,7 +191,8 @@ export const WeeklyGoalsPanel: React.FC = () => {
               periodLabel={def.periodLabel}
               current={weeklyGoal.progress[def.currentProgressKey] as number}
               target={weeklyGoal[def.targetKey] as number | undefined}
-              formatDuration
+              formatDuration={def.input === "duration"}
+              unit={def.input === "steps" ? " adım" : ""}
               colorClass={def.colorClass}
             />
           ))}

@@ -1,7 +1,7 @@
 import type { FC } from "react";
 import { cn } from "../../lib/utils";
 import { formatDurationHoursMinutes } from "../../lib/duration";
-import type { CardMeta } from "../../config/dashboard";
+import type { CardMeta, CardValueUnit } from "../../config/dashboard";
 import type { CategoryBreakdownItem } from "../../types/modules";
 import { LucideIcon } from "lucide-react";
 
@@ -10,11 +10,16 @@ interface SummaryCardProps {
   icon: LucideIcon;
   isActive: boolean;
   onClick: () => void;
-  primaryMinutes: number;
+  primaryValue: number;
   primaryLabel: string;
-  targetMinutes?: number | null;
+  targetValue?: number | null;
   showTarget: boolean;
   breakdown?: CategoryBreakdownItem[];
+}
+
+function formatValue(value: number, unit: CardValueUnit): string {
+  if (unit === "steps") return `${Math.round(value).toLocaleString("tr-TR")} adım`;
+  return formatDurationHoursMinutes(value);
 }
 
 export const SummaryCard: FC<SummaryCardProps> = ({
@@ -22,15 +27,15 @@ export const SummaryCard: FC<SummaryCardProps> = ({
   icon: Icon,
   isActive,
   onClick,
-  primaryMinutes,
+  primaryValue,
   primaryLabel,
-  targetMinutes,
+  targetValue,
   showTarget,
   breakdown,
 }) => {
-  const showTargetValue = showTarget && targetMinutes != null && targetMinutes > 0;
-  const pct = showTargetValue && targetMinutes
-    ? Math.min(100, Math.round((primaryMinutes / targetMinutes) * 100))
+  const showTargetValue = showTarget && targetValue != null && targetValue > 0;
+  const pct = showTargetValue && targetValue
+    ? Math.min(100, Math.round((primaryValue / targetValue) * 100))
     : null;
 
   return (
@@ -45,7 +50,6 @@ export const SummaryCard: FC<SummaryCardProps> = ({
           : "bg-white dark:bg-black/20 border-slate-200 dark:border-white/5"
       )}
     >
-      {/* Sabit yükseklik: başlık satırı tüm kartlarda aynı hizada */}
       <div className="flex items-start gap-3 min-h-[3.75rem] shrink-0">
         <div className={cn("p-2.5 rounded-xl shrink-0", meta.iconBg)}>
           <Icon size={20} />
@@ -60,10 +64,9 @@ export const SummaryCard: FC<SummaryCardProps> = ({
         </div>
       </div>
 
-      {/* Sabit yükseklik: gerçekleşen + hedef satırı */}
       <div className="min-h-[3.5rem] shrink-0 space-y-1">
         <p className="text-xl font-bold leading-tight text-slate-800 dark:text-slate-100">
-          {formatDurationHoursMinutes(primaryMinutes)}
+          {formatValue(primaryValue, meta.valueUnit)}
         </p>
         <p className="text-xs text-slate-500 min-h-[1.25rem] leading-snug">
           {showTarget ? (
@@ -71,7 +74,7 @@ export const SummaryCard: FC<SummaryCardProps> = ({
               <>
                 Hedef:{" "}
                 <span className="font-medium">
-                  {formatDurationHoursMinutes(targetMinutes!)}
+                  {formatValue(targetValue!, meta.valueUnit)}
                 </span>
                 {pct != null && (
                   <span className="ml-2 text-emerald-600 dark:text-emerald-400">
@@ -88,7 +91,6 @@ export const SummaryCard: FC<SummaryCardProps> = ({
         </p>
       </div>
 
-      {/* Sabit yükseklik: ilerleme çubuğu (haftalık görünümde her kartta aynı slot) */}
       <div
         className={cn(
           "shrink-0 h-1.5 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden",
@@ -104,7 +106,6 @@ export const SummaryCard: FC<SummaryCardProps> = ({
         )}
       </div>
 
-      {/* Alt tipler: kalan alanın altında, üst blokları hizayı bozmaz */}
       {breakdown && breakdown.length > 0 ? (
         <ul className="mt-auto space-y-1.5 border-t border-slate-100 dark:border-white/5 pt-3">
           {breakdown.slice(0, 4).map((item) => (
@@ -116,7 +117,7 @@ export const SummaryCard: FC<SummaryCardProps> = ({
                 {item.name}
               </span>
               <span className="text-slate-500 font-medium shrink-0">
-                {formatDurationHoursMinutes(item.minutes)}
+                {formatValue(item.minutes, meta.valueUnit === "steps" ? "steps" : "duration")}
               </span>
             </li>
           ))}

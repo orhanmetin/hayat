@@ -132,6 +132,8 @@ namespace Hayat.Application.DTOs
         int? TargetTotalSportMinutes,
         int? TargetAvgDeepWorkMinutesPerDay,
         int? TargetAvgMeditationMinutesPerDay,
+        int? TargetAvgStepsPerDay,
+        int? TargetAvgScreenMinutesPerDay,
         WeeklyGoalProgressDto Progress
     );
     public record WeeklyGoalProgressDto(
@@ -139,10 +141,14 @@ namespace Hayat.Application.DTOs
         double SportProgress,
         double DeepWorkProgress,
         double MeditationProgress,
+        double StepsProgress,
+        double ScreenProgress,
         int CurrentAvgSleepMinutes,
         int CurrentTotalSportMinutes,
         int CurrentAvgDeepWorkMinutes,
-        int CurrentAvgMeditationMinutes
+        int CurrentAvgMeditationMinutes,
+        int CurrentAvgSteps,
+        int CurrentAvgScreenMinutes
     );
     public record UpsertWeeklyGoalRequest(
         int Year,
@@ -150,7 +156,9 @@ namespace Hayat.Application.DTOs
         int? TargetAvgSleepMinutesPerDay,
         int? TargetTotalSportMinutes,
         int? TargetAvgDeepWorkMinutesPerDay,
-        int? TargetAvgMeditationMinutesPerDay
+        int? TargetAvgMeditationMinutesPerDay,
+        int? TargetAvgStepsPerDay,
+        int? TargetAvgScreenMinutesPerDay
     );
     public record WeekInfoDto(int Year, int WeekNumber, DateOnly WeekStart, DateOnly WeekEnd);
 
@@ -202,11 +210,26 @@ namespace Hayat.Application.DTOs
         int? TargetAverageMinutesPerDay
     );
 
+    public record StepsCardDto(
+        int TotalSteps,
+        int AverageStepsPerDay,
+        int? TargetAverageStepsPerDay
+    );
+
+    public record ScreenTimeCardDto(
+        int TotalMinutes,
+        int AverageMinutesPerDay,
+        int? TargetAverageMinutesPerDay,
+        IReadOnlyList<CategoryBreakdownItemDto> Breakdown
+    );
+
     public record DashboardCardsDto(
         SportCardDto Sport,
         SleepCardDto Sleep,
         DeepWorkCardDto DeepWork,
-        MeditationCardDto Meditation
+        MeditationCardDto Meditation,
+        StepsCardDto Steps,
+        ScreenTimeCardDto ScreenTime
     );
 
     public record TimeBucketValueDto(string Key, string Label, int Minutes);
@@ -227,7 +250,10 @@ namespace Hayat.Application.DTOs
         IReadOnlyList<TimeBucketValueDto> Sleep,
         IReadOnlyList<TimeBucketValueDto> Meditation,
         StackedSeriesDto Sport,
-        StackedSeriesDto DeepWork
+        StackedSeriesDto DeepWork,
+        IReadOnlyList<TimeBucketValueDto> Steps,
+        IReadOnlyList<TimeBucketValueDto> ScreenTime,
+        StackedSeriesDto ScreenTimeByApp
     );
 
     public record DashboardOverviewDto(
