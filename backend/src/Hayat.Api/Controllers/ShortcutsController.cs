@@ -24,12 +24,16 @@ namespace Hayat.Api.Controllers
             "{\"days\":[{\"date\":\"2026-07-27\",\"steps\":8000}]} veya tek gün {\"date\":\"2026-07-27\",\"steps\":8000}";
 
         private const string ScreenExample =
-            "{\"days\":[{\"date\":\"2026-07-27\",\"entries\":[{\"appName\":\"Instagram\",\"minutes\":48}]}]}";
+            "{\"date\":\"2026-07-29\",\"apps\":[\"Chrome (33m)\",\"Shortcuts (2h 5m)\"]}";
 
         private const string EmptyBodyHint =
             "Sağlık Örneklerini Bul çıktısı HTTP gövdesine otomatik gitmez. " +
             "URL İçeriğini Al → İstek Gövdesi → JSON → days alanına {date,steps} listesini bağla. " +
             "Önceki adımı gövdeye sürüklemezsen gövde boş kalır.";
+
+        private const string ScreenEmptyHint =
+            "İstek Gövdesi = JSON. Örnek: { \"date\": \"2026-07-29\", \"apps\": [\"Chrome (33m)\", \"Shortcuts (2h 5m)\"] }. " +
+            "Website yok — sadece app satırları. Süre parantez içinde (33m / 2h 5m); API dakikaya çevirir.";
 
         private readonly IDigitalService _service;
 
@@ -90,7 +94,7 @@ namespace Hayat.Api.Controllers
                 return BadRequest(new
                 {
                     message = parseError,
-                    hint = "İstek Gövdesi = JSON veya Metin (JSON içeriği). Form/Dosya ile Health objesi gönderme.",
+                    hint = ScreenEmptyHint,
                     example = ScreenExample,
                     receivedPreview = Truncate(raw)
                 });
@@ -101,7 +105,7 @@ namespace Hayat.Api.Controllers
                 return BadRequest(new
                 {
                     message = "JSON gövde boş.",
-                    hint = "URL İçeriğini Al → İstek Gövdesi → JSON → days listesini bağla.",
+                    hint = ScreenEmptyHint,
                     example = ScreenExample
                 });
             }
@@ -111,7 +115,8 @@ namespace Hayat.Api.Controllers
             {
                 return BadRequest(new
                 {
-                    message = "days gerekli (veya tek gün: date + entries).",
+                    message = "apps gerekli. Format: \"Chrome (33m)\" veya \"Shortcuts (2h 5m)\".",
+                    hint = ScreenEmptyHint,
                     example = ScreenExample,
                     receivedPreview = Truncate(raw)
                 });

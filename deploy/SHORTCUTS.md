@@ -90,42 +90,43 @@ Başarılı cevap örneği: `{ "upserted": 7, "skipped": 0 }`.
 > Health izni: **Ayarlar → Kısayollar → Sağlık → Adım Sayısı** açık olmalı.
 
 
-## 3. Ekran süresi — POST
+## 3. Ekran süresi — POST (sade format)
 
 **URL:** `http://167.233.16.12/api/shortcuts/screen-time`
 
-### Body örneği
+Sadece **uygulama** satırları. Website yok. Her satır:
+
+`UygulamaAdı (süre)` → örn. `Chrome (33m)`, `Shortcuts (2h 5m)`
+
+API uygulama adını ve süreyi ayırır; süreyi dakikaya çevirir (`2h 5m` → 125).
+
+### Body
 
 ```json
 {
-  "days": [
-    {
-      "date": "2026-07-27",
-      "entries": [
-        { "appName": "Instagram", "minutes": 48, "kind": "app" },
-        { "appName": "Messages", "minutes": 22, "kind": "app" },
-        { "appName": "example.com", "minutes": 15, "kind": "website" }
-      ]
-    }
+  "date": "2026-07-29",
+  "apps": [
+    "Chrome (33m)",
+    "Shortcuts (2h 5m)",
+    "Instagram (1h)"
   ]
 }
 ```
 
-### URL İçeriğini Al ayarları
+`date` yoksa **bugün** kullanılır. Ham dizi de olur: `["Chrome (33m)", "Shortcuts (2h 5m)"]`.
 
-Aynı şekilde **POST** + header’lar + **İstek Gövdesi = JSON**.
+### Shortcuts iskeleti
 
-### Veriyi hazırlama
-
-| Sıra | Türkçe aksiyon | İngilizce |
-|------|----------------|-----------|
-| 1 | Uygulama ve Web Sitesi Kullanımını Al | Get App & Website Usage |
-| 2 | Süreleri dakikaya çevir | Convert / Get Duration |
-| 3 | Sözlük listesi kur | Dictionary / List |
-| 4 | **URL İçeriğini Al** POST | Get Contents of URL |
+1. **Uygulama ve Web Sitesi Kullanımını Al** → sadece app’ler (website’leri atla)
+2. Her app için metin satırı üret: `Ad (Xm)` / `Ad (Yh Zm)`
+3. Listeyi `apps` alanına bağla
+4. **URL İçeriğini Al** → POST → İstek Gövdesi **JSON**:
+   - `date` = `yyyy-MM-dd`
+   - `apps` = satır listesi
 
 > Aynı güne tekrar gönderirsen o gün **yeniden yazılır**.  
 > 30 günden eski tarihler yok sayılır.
+
 
 ## 4. Otomasyon
 

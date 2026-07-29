@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.Json;
+using Hayat.Application.Common;
 using Hayat.Application.DTOs;
 
 namespace Hayat.Api.Shortcuts
@@ -61,25 +62,33 @@ namespace Hayat.Api.Shortcuts
             return days.Count == 0 ? null : new UpsertDailyStepsRequest(days, source);
         }
 
-        public static UpsertScreenTimeRequest? ParseScreenTime(JsonElement body)
+        /// <summary>
+        /// Simplified screen-time body (apps only, no websites):
+        /// <code>{ "date": "2026-07-29", "apps": ["Chrome (33m)", "Shortcuts (2h 5m)"] }</code>
+        /// or a raw string array (uses today), or <c>days: [{ date, apps }]</c>.
+        /// </summary>
+        public static UpsertScreenTimeRequest? ParseScreenTime(JsonElement body, DateOnly? today = null)
         {
+            var fallbackDate = today ?? AppTime.Today;
             var days = new List<UpsertScreenTimeDay>();
 
             if (body.ValueKind == JsonValueKind.Array)
             {
-                foreach (var el in body.EnumerateArray())
-                    if (TryParseScreenDay(el, out var day))
-                        days.Add(day);
+                // ["Chrome (33m)", ...] → today
+                if (TryParseAppsArray(body, out var apps) && apps.Count > 0)
+                    days.Add(new UpsertScreenTimeDay(fallbackDate, apps));
             }
             else if (body.ValueKind == JsonValueKind.Object)
             {
                 if (TryGetProperty(body, "days", out var daysEl) && daysEl.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var el in daysEl.EnumerateArray())
-                        if (TryParseScreenDay(el, out var day))
+                    {
+                        if (TryParseScreenDay(el, fallbackDate, out var day) && day.Entries.Count > 0)
                             days.Add(day);
+                    }
                 }
-                else if (TryParseScreenDay(body, out var single))
+                else if (TryParseScreenDay(body, fallbackDate, out var single) && single.Entries.Count > 0)
                 {
                     days.Add(single);
                 }
@@ -100,36 +109,92 @@ namespace Hayat.Api.Shortcuts
             return true;
         }
 
-        private static bool TryParseScreenDay(JsonElement el, out UpsertScreenTimeDay day)
+        private static bool TryParseScreenDay(JsonElement el, DateOnly fallbackDate, out UpsertScreenTimeDay day)
         {
             day = null!;
             if (el.ValueKind != JsonValueKind.Object) return false;
-            if (!TryGetPropertyAny(el, DateKeys, out var dateEl) || !TryParseDate(dateEl, out var date))
-                return false;
 
-            var entries = new List<UpsertScreenTimeItem>();
-            if (TryGetProperty(el, "entries", out var entriesEl) && entriesEl.ValueKind == JsonValueKind.Array)
+            var date = fallbackDate;
+            if (TryGetPropertyAny(el, DateKeys, out var dateEl))
             {
-                foreach (var entryEl in entriesEl.EnumerateArray())
-                {
-                    if (entryEl.ValueKind != JsonValueKind.Object) continue;
-                    if (!TryGetProperty(entryEl, "appName", out var nameEl) &&
-                        !TryGetProperty(entryEl, "app", out nameEl) &&
-                        !TryGetProperty(entryEl, "name", out nameEl))
-                        continue;
-                    var name = nameEl.ValueKind == JsonValueKind.String ? nameEl.GetString() : null;
-                    if (string.IsNullOrWhiteSpace(name)) continue;
-                    if (!TryGetProperty(entryEl, "minutes", out var minEl) || !TryParseInt(minEl, out var minutes))
-                        continue;
-                    string? kind = null;
-                    if (TryGetProperty(entryEl, "kind", out var kindEl) && kindEl.ValueKind == JsonValueKind.String)
-                        kind = kindEl.GetString();
-                    entries.Add(new UpsertScreenTimeItem(name.Trim(), minutes, kind));
-                }
+                if (!TryParseDate(dateEl, out date))
+                    return false;
+            }
+
+            List<UpsertScreenTimeItem> entries;
+            if (TryGetProperty(el, "apps", out var appsEl))
+            {
+                if (!TryParseAppsElement(appsEl, out entries))
+                    return false;
+            }
+            else if (TryGetProperty(el, "entries", out var entriesEl) && entriesEl.ValueKind == JsonValueKind.Array)
+            {
+                // Backward-compatible: still accept string lines inside entries.
+                if (!TryParseAppsArray(entriesEl, out entries))
+                    return false;
+            }
+            else
+            {
+                return false;
             }
 
             day = new UpsertScreenTimeDay(date, entries);
             return true;
+        }
+
+        private static bool TryParseAppsElement(JsonElement el, out List<UpsertScreenTimeItem> entries)
+        {
+            if (el.ValueKind == JsonValueKind.Array)
+                return TryParseAppsArray(el, out entries);
+
+            // Single text blob with newlines / commas.
+            if (el.ValueKind == JsonValueKind.String)
+            {
+                entries = [];
+                var text = el.GetString();
+                if (string.IsNullOrWhiteSpace(text)) return false;
+                foreach (var part in text.Split(['\n', '\r', ',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (ScreenTimeAppLineParser.TryParse(part, out var name, out var minutes))
+                        entries.Add(new UpsertScreenTimeItem(name, minutes));
+                }
+                return entries.Count > 0;
+            }
+
+            entries = [];
+            return false;
+        }
+
+        private static bool TryParseAppsArray(JsonElement arrayEl, out List<UpsertScreenTimeItem> entries)
+        {
+            entries = [];
+            if (arrayEl.ValueKind != JsonValueKind.Array) return false;
+
+            foreach (var item in arrayEl.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.String)
+                {
+                    if (ScreenTimeAppLineParser.TryParse(item.GetString(), out var name, out var minutes))
+                        entries.Add(new UpsertScreenTimeItem(name, minutes));
+                    continue;
+                }
+
+                // Rare: object still using old shape { appName, minutes }
+                if (item.ValueKind == JsonValueKind.Object)
+                {
+                    if (!TryGetProperty(item, "appName", out var nameEl) &&
+                        !TryGetProperty(item, "app", out nameEl) &&
+                        !TryGetProperty(item, "name", out nameEl))
+                        continue;
+                    var name = nameEl.ValueKind == JsonValueKind.String ? nameEl.GetString() : null;
+                    if (string.IsNullOrWhiteSpace(name)) continue;
+                    if (!TryGetProperty(item, "minutes", out var minEl) || !TryParseInt(minEl, out var minutes))
+                        continue;
+                    entries.Add(new UpsertScreenTimeItem(name.Trim(), minutes));
+                }
+            }
+
+            return entries.Count > 0;
         }
 
         private static bool TryParseDate(JsonElement el, out DateOnly date)

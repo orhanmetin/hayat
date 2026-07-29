@@ -139,9 +139,6 @@ namespace Hayat.Infrastructure.Services
                 {
                     var name = entry.AppName?.Trim();
                     if (string.IsNullOrEmpty(name) || entry.Minutes <= 0) continue;
-                    var kind = string.Equals(entry.Kind, "website", StringComparison.OrdinalIgnoreCase)
-                        ? "website"
-                        : "app";
                     if (name.Length > 120) name = name[..120];
 
                     _db.ScreenTimeLogs.Add(new ScreenTimeLog
@@ -149,7 +146,7 @@ namespace Hayat.Infrastructure.Services
                         UserId = userId,
                         Date = day.Date,
                         AppName = name,
-                        Kind = kind,
+                        Kind = "app",
                         Minutes = Math.Min(entry.Minutes, 24 * 60),
                         SyncedAt = now
                     });

@@ -21,7 +21,8 @@ namespace Hayat.Application.DTOs
         int Minutes,
         DateTime SyncedAt);
 
-    public record UpsertScreenTimeItem(string AppName, int Minutes, string? Kind);
+    /// <summary>Parsed app row after expanding lines like <c>Chrome (33m)</c>.</summary>
+    public record UpsertScreenTimeItem(string AppName, int Minutes);
     public record UpsertScreenTimeDay(DateOnly Date, List<UpsertScreenTimeItem> Entries);
     public record UpsertScreenTimeRequest(List<UpsertScreenTimeDay> Days);
     public record UpsertScreenTimeResultDto(int Upserted, int Days);
