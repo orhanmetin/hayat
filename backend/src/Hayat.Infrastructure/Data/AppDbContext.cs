@@ -208,6 +208,7 @@ namespace Hayat.Infrastructure.Data
                 e.HasIndex(x => new { x.UserId, x.Date }).IsUnique();
                 e.Property(x => x.StartVision).HasMaxLength(4000);
                 e.Property(x => x.EndReflection).HasMaxLength(4000);
+                e.Property(x => x.SnapshotCategoryJson).HasMaxLength(8000);
                 e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             });
 

@@ -71,14 +71,29 @@ namespace Hayat.Application.DTOs
     public record PusulaStepToggleRequest(DateOnly? Date);
 
     // --- Day review ---
+    public record PusulaDayReviewCategorySnapshotDto(
+        string Name,
+        int PlannedMinutes,
+        int ActualMinutes);
+
+    public record PusulaDayReviewPerformanceDto(
+        DateTime CapturedAt,
+        int TotalTasks,
+        int CompletedTasks,
+        double CompletionPercent,
+        int PlannedMinutes,
+        int ActualMinutes,
+        IReadOnlyList<PusulaDayReviewCategorySnapshotDto> Categories);
+
     public record PusulaDayReviewDto(
         DateOnly Date,
         string? StartVision,
         string? EndReflection,
         int? FeelingScore,
-        DateTime? UpdatedAt);
+        DateTime? UpdatedAt,
+        PusulaDayReviewPerformanceDto? Performance);
 
-    /// <summary>Mode "start" updates StartVision; "end" updates EndReflection + FeelingScore.</summary>
+    /// <summary>Mode "start" updates StartVision; "end" updates EndReflection + FeelingScore + performance snapshot.</summary>
     public record UpsertPusulaDayReviewRequest(
         DateOnly Date,
         string Mode,
