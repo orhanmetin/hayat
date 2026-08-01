@@ -24,6 +24,10 @@ export const ActiveTimerPanel: React.FC<ActiveTimerPanelProps> = ({
     onSaved?.();
   };
 
+  const handleDiscard = async () => {
+    await timer.clear();
+  };
+
   if (timer.loading) {
     return (
       <div className="p-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black/20 text-sm text-slate-400 text-center">
@@ -100,7 +104,8 @@ export const ActiveTimerPanel: React.FC<ActiveTimerPanelProps> = ({
           finishAt={timer.finishAt}
           deepWorkTypes={deepWorkTypes}
           meditationTypes={meditationTypes}
-          onClose={timer.resume}
+          onResume={timer.resume}
+          onDiscard={handleDiscard}
           onSaved={handleSaved}
         />
       )}
