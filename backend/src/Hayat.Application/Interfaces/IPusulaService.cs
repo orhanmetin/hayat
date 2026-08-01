@@ -15,6 +15,7 @@ namespace Hayat.Application.Interfaces
 
         // Tasks
         Task<IReadOnlyList<PusulaDayDto>> GetDaysAsync(int userId, DateOnly from, DateOnly to);
+        Task<IReadOnlyList<PusulaTaskDto>> GetUndatedTasksAsync(int userId);
         Task<PusulaTaskDto?> CreateTaskAsync(int userId, CreatePusulaTaskRequest request);
         Task<PusulaTaskDto?> UpdateTaskAsync(int userId, int id, UpdatePusulaTaskRequest request);
         Task<bool> DeleteTaskAsync(int userId, int id);
@@ -23,8 +24,8 @@ namespace Hayat.Application.Interfaces
         Task<bool> ReorderTasksAsync(int userId, PusulaReorderRequest request);
 
         // Steps
-        Task<PusulaTaskDto?> AddStepAsync(int userId, int taskId, CreatePusulaStepRequest request, DateOnly date);
-        Task<PusulaTaskDto?> DeleteStepAsync(int userId, int stepId, DateOnly date);
+        Task<PusulaTaskDto?> AddStepAsync(int userId, int taskId, CreatePusulaStepRequest request, DateOnly? date);
+        Task<PusulaTaskDto?> DeleteStepAsync(int userId, int stepId, DateOnly? date);
         Task<PusulaTaskDto?> ToggleStepAsync(int userId, int stepId, PusulaStepToggleRequest request);
 
         // Day review

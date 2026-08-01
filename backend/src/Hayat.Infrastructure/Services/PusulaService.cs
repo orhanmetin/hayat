@@ -161,6 +161,26 @@ namespace Hayat.Infrastructure.Services
             return days;
         }
 
+        public async Task<IReadOnlyList<PusulaTaskDto>> GetUndatedTasksAsync(int userId)
+        {
+            await EnsureDefaultCategoriesAsync(userId);
+
+            var tasks = await _db.PusulaTasks.AsNoTracking()
+                .Where(t => t.UserId == userId
+                    && t.Date == null
+                    && t.Recurrence == PusulaTask.RecurrenceNone)
+                .Include(t => t.Category).ThenInclude(c => c!.Parent)
+                .Include(t => t.Steps.OrderBy(s => s.SortOrder))
+                    .ThenInclude(s => s.Checks.Where(c => c.Date == UndatedStepDate))
+                .OrderBy(t => t.Status == PusulaTask.StatusCompleted ? 1 : 0)
+                .ThenBy(t => t.SortOrder)
+                .ThenBy(t => t.Priority)
+                .ThenBy(t => t.Id)
+                .ToListAsync();
+
+            return tasks.Select(t => MapTask(t, null)).ToList();
+        }
+
         public async Task<PusulaTaskDto?> CreateTaskAsync(int userId, CreatePusulaTaskRequest request)
         {
             var title = request.Title?.Trim();
@@ -170,8 +190,11 @@ namespace Hayat.Infrastructure.Services
                 !await _db.PusulaCategories.AnyAsync(c => c.Id == request.CategoryId && c.UserId == userId))
                 return null;
 
-            var date = request.Date ?? AppTime.Today;
             var recurrence = RecurrenceFromString(request.Recurrence);
+            // Recurring tasks need a start date; undated is only for one-time backlog items.
+            var date = recurrence == PusulaTask.RecurrenceNone
+                ? request.Date
+                : request.Date ?? AppTime.Today;
             var maxSort = await _db.PusulaTasks
                 .Where(t => t.UserId == userId)
                 .MaxAsync(t => (int?)t.SortOrder) ?? 0;
@@ -182,14 +205,18 @@ namespace Hayat.Infrastructure.Services
                 Title = title,
                 Note = NullIfEmpty(request.Note),
                 Date = date,
-                // Recurring tasks are unscheduled list items (no time block).
-                TimeOfDay = recurrence == PusulaTask.RecurrenceNone ? ParseTime(request.TimeOfDay) : null,
+                // Recurring / undated tasks are unscheduled list items (no time block).
+                TimeOfDay = recurrence == PusulaTask.RecurrenceNone && date != null
+                    ? ParseTime(request.TimeOfDay)
+                    : null,
                 EstimatedMinutes = Positive(request.EstimatedMinutes),
                 ActualMinutes = Positive(request.ActualMinutes),
                 Priority = ClampPriority(request.Priority),
                 Recurrence = recurrence,
                 RecurrenceDay = recurrence == PusulaTask.RecurrenceWeekly
-                    ? (request.RecurrenceDay is >= 0 and <= 6 ? request.RecurrenceDay : (int)date.DayOfWeek)
+                    ? (request.RecurrenceDay is >= 0 and <= 6
+                        ? request.RecurrenceDay
+                        : (int)(date ?? AppTime.Today).DayOfWeek)
                     : null,
                 WorkType = WorkTypeFromString(request.WorkType),
                 Status = PusulaTask.StatusPending,
@@ -222,17 +249,25 @@ namespace Hayat.Infrastructure.Services
                 return null;
 
             var recurrence = RecurrenceFromString(request.Recurrence);
+            var date = recurrence == PusulaTask.RecurrenceNone
+                ? request.Date
+                : request.Date ?? task.Date ?? AppTime.Today;
+
             task.Title = title;
             task.Note = NullIfEmpty(request.Note);
             task.CategoryId = request.CategoryId;
-            task.Date = request.Date;
-            task.TimeOfDay = recurrence == PusulaTask.RecurrenceNone ? ParseTime(request.TimeOfDay) : null;
+            task.Date = date;
+            task.TimeOfDay = recurrence == PusulaTask.RecurrenceNone && date != null
+                ? ParseTime(request.TimeOfDay)
+                : null;
             task.EstimatedMinutes = Positive(request.EstimatedMinutes);
             task.ActualMinutes = Positive(request.ActualMinutes);
             task.Priority = ClampPriority(request.Priority);
             task.Recurrence = recurrence;
             task.RecurrenceDay = recurrence == PusulaTask.RecurrenceWeekly
-                ? (request.RecurrenceDay is >= 0 and <= 6 ? request.RecurrenceDay : (int)request.Date.DayOfWeek)
+                ? (request.RecurrenceDay is >= 0 and <= 6
+                    ? request.RecurrenceDay
+                    : (int)date!.Value.DayOfWeek)
                 : null;
             task.WorkType = WorkTypeFromString(request.WorkType);
 
@@ -269,11 +304,12 @@ namespace Hayat.Infrastructure.Services
             }
             else
             {
+                if (request.Date == null) return null;
                 var occurrence = await _db.PusulaOccurrences
                     .FirstOrDefaultAsync(o => o.TaskId == task.Id && o.Date == request.Date);
                 if (occurrence == null)
                 {
-                    occurrence = new PusulaOccurrence { TaskId = task.Id, Date = request.Date };
+                    occurrence = new PusulaOccurrence { TaskId = task.Id, Date = request.Date.Value };
                     _db.PusulaOccurrences.Add(occurrence);
                 }
                 if (changeStatus)
@@ -286,7 +322,7 @@ namespace Hayat.Infrastructure.Services
             }
 
             await _db.SaveChangesAsync();
-            return await GetTaskDtoAsync(userId, task.Id, request.Date);
+            return await GetTaskDtoAsync(userId, task.Id, task.Date ?? request.Date);
         }
 
         public async Task<PusulaTaskDto?> ScheduleTaskAsync(int userId, int id, PusulaScheduleRequest request)
@@ -324,7 +360,7 @@ namespace Hayat.Infrastructure.Services
 
         // ---------- Steps ----------
 
-        public async Task<PusulaTaskDto?> AddStepAsync(int userId, int taskId, CreatePusulaStepRequest request, DateOnly date)
+        public async Task<PusulaTaskDto?> AddStepAsync(int userId, int taskId, CreatePusulaStepRequest request, DateOnly? date)
         {
             var title = request.Title?.Trim();
             if (string.IsNullOrEmpty(title)) return null;
@@ -336,10 +372,10 @@ namespace Hayat.Infrastructure.Services
             var maxSort = task.Steps.Count > 0 ? task.Steps.Max(s => s.SortOrder) : 0;
             task.Steps.Add(new PusulaTaskStep { Title = title, SortOrder = maxSort + 1 });
             await _db.SaveChangesAsync();
-            return await GetTaskDtoAsync(userId, taskId, date);
+            return await GetTaskDtoAsync(userId, taskId, date ?? task.Date);
         }
 
-        public async Task<PusulaTaskDto?> DeleteStepAsync(int userId, int stepId, DateOnly date)
+        public async Task<PusulaTaskDto?> DeleteStepAsync(int userId, int stepId, DateOnly? date)
         {
             var step = await _db.PusulaTaskSteps
                 .Include(s => s.Task)
@@ -347,9 +383,10 @@ namespace Hayat.Infrastructure.Services
             if (step == null) return null;
 
             var taskId = step.TaskId;
+            var contextDate = date ?? step.Task.Date;
             _db.PusulaTaskSteps.Remove(step);
             await _db.SaveChangesAsync();
-            return await GetTaskDtoAsync(userId, taskId, date);
+            return await GetTaskDtoAsync(userId, taskId, contextDate);
         }
 
         public async Task<PusulaTaskDto?> ToggleStepAsync(int userId, int stepId, PusulaStepToggleRequest request)
@@ -359,15 +396,16 @@ namespace Hayat.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == stepId && s.Task.UserId == userId);
             if (step == null) return null;
 
+            var checkDate = ResolveStepDate(step.Task.Date, request.Date);
             var check = await _db.PusulaStepChecks
-                .FirstOrDefaultAsync(c => c.StepId == stepId && c.Date == request.Date);
+                .FirstOrDefaultAsync(c => c.StepId == stepId && c.Date == checkDate);
             if (check == null)
-                _db.PusulaStepChecks.Add(new PusulaStepCheck { StepId = stepId, Date = request.Date });
+                _db.PusulaStepChecks.Add(new PusulaStepCheck { StepId = stepId, Date = checkDate });
             else
                 _db.PusulaStepChecks.Remove(check);
 
             await _db.SaveChangesAsync();
-            return await GetTaskDtoAsync(userId, step.TaskId, request.Date);
+            return await GetTaskDtoAsync(userId, step.TaskId, step.Task.Date ?? request.Date);
         }
 
         // ---------- Day review ----------
@@ -472,6 +510,7 @@ namespace Hayat.Infrastructure.Services
         {
             return await _db.PusulaTasks.AsNoTracking()
                 .Where(t => t.UserId == userId
+                    && t.Date != null
                     && t.Date <= to
                     && (t.Recurrence != PusulaTask.RecurrenceNone || t.Date >= from))
                 .Include(t => t.Category).ThenInclude(c => c!.Parent)
@@ -505,15 +544,22 @@ namespace Hayat.Infrastructure.Services
 
         private static bool OccursOn(PusulaTask task, DateOnly date) => task.Recurrence switch
         {
-            PusulaTask.RecurrenceDaily => task.Date <= date,
-            PusulaTask.RecurrenceWeekly => task.Date <= date && task.RecurrenceDay == (int)date.DayOfWeek,
+            PusulaTask.RecurrenceDaily => task.Date != null && task.Date <= date,
+            PusulaTask.RecurrenceWeekly =>
+                task.Date != null && task.Date <= date && task.RecurrenceDay == (int)date.DayOfWeek,
             _ => task.Date == date
         };
 
-        private static PusulaTaskDto MapTask(PusulaTask task, DateOnly date)
+        /// <summary>Sentinel date for step checks on undated backlog tasks.</summary>
+        private static readonly DateOnly UndatedStepDate = new(1, 1, 1);
+
+        private static DateOnly ResolveStepDate(DateOnly? taskDate, DateOnly? requestDate) =>
+            taskDate ?? requestDate ?? UndatedStepDate;
+
+        private static PusulaTaskDto MapTask(PusulaTask task, DateOnly? date)
         {
             var today = AppTime.Today;
-            var occurrence = task.Recurrence != PusulaTask.RecurrenceNone
+            var occurrence = task.Recurrence != PusulaTask.RecurrenceNone && date != null
                 ? task.Occurrences.FirstOrDefault(o => o.Date == date)
                 : null;
 
@@ -522,15 +568,20 @@ namespace Hayat.Infrastructure.Services
                 : occurrence?.Status ?? PusulaTask.StatusPending;
             var status = storedStatus == PusulaTask.StatusCompleted
                 ? "completed"
-                : date < today ? "notdone" : "pending";
+                : date is { } d && d < today ? "notdone" : "pending";
 
             var actualMinutes = task.Recurrence == PusulaTask.RecurrenceNone
                 ? task.ActualMinutes
                 : occurrence?.ActualMinutes;
 
+            var stepCheckDate = ResolveStepDate(task.Date, date);
             var steps = task.Steps
                 .OrderBy(s => s.SortOrder)
-                .Select(s => new PusulaStepDto(s.Id, s.Title, s.SortOrder, s.Checks.Any(c => c.Date == date)))
+                .Select(s => new PusulaStepDto(
+                    s.Id,
+                    s.Title,
+                    s.SortOrder,
+                    s.Checks.Any(c => c.Date == stepCheckDate)))
                 .ToList();
 
             return new PusulaTaskDto(
@@ -540,7 +591,7 @@ namespace Hayat.Infrastructure.Services
                 task.CategoryId,
                 task.Category?.Name,
                 task.Category?.Parent?.Name ?? task.Category?.Name,
-                date,
+                date ?? task.Date,
                 task.TimeOfDay?.ToString("HH:mm"),
                 task.EstimatedMinutes,
                 actualMinutes,
@@ -553,16 +604,17 @@ namespace Hayat.Infrastructure.Services
                 steps);
         }
 
-        private async Task<PusulaTaskDto?> GetTaskDtoAsync(int userId, int taskId, DateOnly date)
+        private async Task<PusulaTaskDto?> GetTaskDtoAsync(int userId, int taskId, DateOnly? date)
         {
+            var stepCheckDate = ResolveStepDate(date, null);
             var task = await _db.PusulaTasks.AsNoTracking()
                 .Where(t => t.Id == taskId && t.UserId == userId)
                 .Include(t => t.Category).ThenInclude(c => c!.Parent)
                 .Include(t => t.Steps.OrderBy(s => s.SortOrder))
-                    .ThenInclude(s => s.Checks.Where(c => c.Date == date))
-                .Include(t => t.Occurrences.Where(o => o.Date == date))
+                    .ThenInclude(s => s.Checks.Where(c => c.Date == stepCheckDate))
+                .Include(t => t.Occurrences.Where(o => date != null && o.Date == date))
                 .FirstOrDefaultAsync();
-            return task == null ? null : MapTask(task, date);
+            return task == null ? null : MapTask(task, date ?? task.Date);
         }
 
         // ---------- Small helpers ----------

@@ -24,7 +24,7 @@ export interface PusulaTask {
   categoryId: number | null;
   categoryName: string | null;
   rootCategoryName: string | null;
-  date: string;
+  date: string | null;
   timeOfDay: string | null;
   estimatedMinutes: number | null;
   actualMinutes: number | null;
@@ -49,7 +49,7 @@ export interface PusulaTaskInput {
   title: string;
   note?: string | null;
   categoryId?: number | null;
-  date?: string;
+  date?: string | null;
   timeOfDay?: string | null;
   estimatedMinutes?: number | null;
   actualMinutes?: number | null;

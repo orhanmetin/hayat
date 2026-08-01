@@ -15,6 +15,7 @@ import {
 import { pusulaApi } from "../../services/pusula";
 import type { PusulaTask } from "../../types/pusula";
 import { cn } from "../../lib/utils";
+import { TaskCompletionModal } from "./TaskCompletionModal";
 
 const PRIORITY_STYLES: Record<number, string> = {
   1: "bg-red-500/10 text-red-600 dark:text-red-400",
@@ -30,7 +31,7 @@ const PRIORITY_LABELS: Record<number, string> = {
 
 interface PusulaTaskCardProps {
   task: PusulaTask;
-  date: string;
+  date: string | null;
   onChanged: (task: PusulaTask) => void;
   onDeleted: (taskId: number) => void;
   onEdit: (task: PusulaTask) => void;
@@ -60,19 +61,44 @@ export const PusulaTaskCard: React.FC<PusulaTaskCardProps> = ({
   const [expanded, setExpanded] = useState(false);
   const [stepDraft, setStepDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [completionOpen, setCompletionOpen] = useState(false);
 
   const completed = task.status === "completed";
   const notDone = task.status === "notdone";
 
-  const toggleStatus = async () => {
+  const markPending = async () => {
     if (busy) return;
     setBusy(true);
     try {
       const res = await pusulaApi.setStatus(task.id, {
         date,
-        status: completed ? "pending" : "completed",
+        status: "pending",
       });
       onChanged(res.data);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleStatusClick = () => {
+    if (busy) return;
+    if (completed) {
+      void markPending();
+      return;
+    }
+    setCompletionOpen(true);
+  };
+
+  const handleConfirmCompletion = async (actualMinutes: number | null) => {
+    setBusy(true);
+    try {
+      const res = await pusulaApi.setStatus(task.id, {
+        date,
+        status: "completed",
+        ...(actualMinutes != null ? { actualMinutes } : {}),
+      });
+      onChanged(res.data);
+      setCompletionOpen(false);
     } finally {
       setBusy(false);
     }
@@ -106,6 +132,7 @@ export const PusulaTaskCard: React.FC<PusulaTaskCardProps> = ({
   const checkedSteps = task.steps.filter((s) => s.isChecked).length;
 
   return (
+    <>
     <div
       onDragOver={
         draggable
@@ -155,7 +182,7 @@ export const PusulaTaskCard: React.FC<PusulaTaskCardProps> = ({
 
         <button
           type="button"
-          onClick={toggleStatus}
+          onClick={handleStatusClick}
           disabled={busy}
           className={cn(
             "w-6 h-6 mt-0.5 rounded-lg border-2 flex items-center justify-center shrink-0 transition-colors",
@@ -337,5 +364,13 @@ export const PusulaTaskCard: React.FC<PusulaTaskCardProps> = ({
         </div>
       )}
     </div>
+    {completionOpen && (
+      <TaskCompletionModal
+        task={task}
+        onConfirm={handleConfirmCompletion}
+        onClose={() => setCompletionOpen(false)}
+      />
+    )}
+    </>
   );
 };

@@ -21,13 +21,18 @@ export const pusulaApi = {
   // Days & tasks
   getDays: (from: string, to?: string) =>
     apiClient.get<PusulaDay[]>("/pusula/days", { params: { from, to: to ?? from } }),
+  getUndatedTasks: () => apiClient.get<PusulaTask[]>("/pusula/tasks/undated"),
   createTask: (data: PusulaTaskInput) => apiClient.post<PusulaTask>("/pusula/tasks", data),
   updateTask: (id: number, data: PusulaTaskInput) =>
     apiClient.put<PusulaTask>(`/pusula/tasks/${id}`, data),
   deleteTask: (id: number) => apiClient.delete(`/pusula/tasks/${id}`),
   setStatus: (
     id: number,
-    data: { date: string; status?: "completed" | "pending" | null; actualMinutes?: number | null }
+    data: {
+      date?: string | null;
+      status?: "completed" | "pending" | null;
+      actualMinutes?: number | null;
+    }
   ) => apiClient.post<PusulaTask>(`/pusula/tasks/${id}/status`, data),
   schedule: (id: number, data: { date?: string | null; timeOfDay?: string | null }) =>
     apiClient.put<PusulaTask>(`/pusula/tasks/${id}/schedule`, data),
@@ -35,12 +40,18 @@ export const pusulaApi = {
     apiClient.post("/pusula/tasks/reorder", data),
 
   // Steps
-  addStep: (taskId: number, title: string, date: string) =>
-    apiClient.post<PusulaTask>(`/pusula/tasks/${taskId}/steps`, { title }, { params: { date } }),
-  deleteStep: (stepId: number, date: string) =>
-    apiClient.delete<PusulaTask>(`/pusula/steps/${stepId}`, { params: { date } }),
-  toggleStep: (stepId: number, date: string) =>
-    apiClient.post<PusulaTask>(`/pusula/steps/${stepId}/toggle`, { date }),
+  addStep: (taskId: number, title: string, date?: string | null) =>
+    apiClient.post<PusulaTask>(
+      `/pusula/tasks/${taskId}/steps`,
+      { title },
+      { params: date ? { date } : undefined }
+    ),
+  deleteStep: (stepId: number, date?: string | null) =>
+    apiClient.delete<PusulaTask>(`/pusula/steps/${stepId}`, {
+      params: date ? { date } : undefined,
+    }),
+  toggleStep: (stepId: number, date?: string | null) =>
+    apiClient.post<PusulaTask>(`/pusula/steps/${stepId}/toggle`, { date: date ?? null }),
 
   // Day review
   getDayReview: (date: string) =>

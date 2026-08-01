@@ -9,15 +9,34 @@ import {
   Sunrise,
 } from "lucide-react";
 import { pusulaApi } from "../services/pusula";
-import type { PusulaCategory, PusulaDay, PusulaTask } from "../types/pusula";
+import type {
+  PusulaCategory,
+  PusulaDay,
+  PusulaTask,
+  PusulaWorkType,
+} from "../types/pusula";
 import { PusulaTaskCard } from "../components/pusula/PusulaTaskCard";
 import { PusulaTaskModal } from "../components/pusula/PusulaTaskModal";
 import { PusulaCalendar } from "../components/pusula/PusulaCalendar";
 import { DayReviewModal } from "../components/pusula/DayReviewModal";
 import { SegmentedControl } from "../components/dashboard/SegmentedControl";
+import { formatMinutes } from "../lib/format";
 
-type SortKey = "manual" | "time" | "priority" | "category";
+type SortKey = "manual" | "time" | "priority" | "category" | "workType";
 type ViewKey = "list" | "day" | "week";
+type ScopeKey = "dated" | "undated";
+
+const WORK_TYPE_ORDER: Record<PusulaWorkType, number> = {
+  deep: 0,
+  shallow: 1,
+  none: 2,
+};
+
+const WORK_TYPE_LABELS: Record<PusulaWorkType, string> = {
+  deep: "Deep Work",
+  shallow: "Shallow Work",
+  none: "Belirsiz",
+};
 
 function completedLast(a: PusulaTask, b: PusulaTask): number {
   const aDone = a.status === "completed" ? 1 : 0;
@@ -49,16 +68,49 @@ function formatDateTr(iso: string): string {
   });
 }
 
+function sortTasks(tasks: PusulaTask[], sortKey: SortKey): PusulaTask[] {
+  const list = [...tasks];
+  const byStatusThen = (cmp: (a: PusulaTask, b: PusulaTask) => number) =>
+    list.sort((a, b) => completedLast(a, b) || cmp(a, b));
+
+  switch (sortKey) {
+    case "priority":
+      return byStatusThen((a, b) => a.priority - b.priority || a.sortOrder - b.sortOrder);
+    case "category":
+      return byStatusThen(
+        (a, b) =>
+          (a.categoryName ?? "zzz").localeCompare(b.categoryName ?? "zzz", "tr") ||
+          a.priority - b.priority
+      );
+    case "workType":
+      return byStatusThen(
+        (a, b) =>
+          WORK_TYPE_ORDER[a.workType] - WORK_TYPE_ORDER[b.workType] ||
+          a.priority - b.priority ||
+          a.sortOrder - b.sortOrder
+      );
+    case "time":
+      return byStatusThen((a, b) => {
+        if (a.timeOfDay && b.timeOfDay) return a.timeOfDay.localeCompare(b.timeOfDay);
+        if (a.timeOfDay) return -1;
+        if (b.timeOfDay) return 1;
+        return a.priority - b.priority;
+      });
+    default:
+      return byStatusThen((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
+  }
+}
+
 export const PusulaPage: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState(todayIso());
   const [weekDays, setWeekDays] = useState<PusulaDay[]>([]);
+  const [undatedTasks, setUndatedTasks] = useState<PusulaTask[]>([]);
   const [categories, setCategories] = useState<PusulaCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("manual");
   const [view, setView] = useState<ViewKey>("list");
-  const [quickTitle, setQuickTitle] = useState("");
-  const [quickAdding, setQuickAdding] = useState(false);
+  const [scope, setScope] = useState<ScopeKey>("dated");
   const [dragTaskId, setDragTaskId] = useState<number | null>(null);
   const [dropTargetId, setDropTargetId] = useState<number | null>(null);
   const [taskModal, setTaskModal] = useState<{ open: boolean; task: PusulaTask | null }>({
@@ -68,14 +120,17 @@ export const PusulaPage: React.FC = () => {
   const [reviewOpen, setReviewOpen] = useState(false);
 
   const weekStart = weekStartIso(selectedDate);
+  const showingUndated = scope === "undated";
 
   const load = useCallback(async () => {
     try {
-      const [daysRes, catsRes] = await Promise.all([
+      const [daysRes, undatedRes, catsRes] = await Promise.all([
         pusulaApi.getDays(weekStart, addDaysIso(weekStart, 6)),
+        pusulaApi.getUndatedTasks(),
         pusulaApi.getCategories(),
       ]);
       setWeekDays(daysRes.data);
+      setUndatedTasks(undatedRes.data);
       setCategories(catsRes.data);
       setError(null);
     } catch {
@@ -96,36 +151,29 @@ export const PusulaPage: React.FC = () => {
   );
 
   const sortedTasks = useMemo(() => {
-    if (!day) return [];
-    const tasks = [...day.tasks];
-    const byStatusThen = (cmp: (a: PusulaTask, b: PusulaTask) => number) =>
-      tasks.sort((a, b) => completedLast(a, b) || cmp(a, b));
-
-    switch (sortKey) {
-      case "priority":
-        return byStatusThen((a, b) => a.priority - b.priority || a.sortOrder - b.sortOrder);
-      case "category":
-        return byStatusThen(
-          (a, b) =>
-            (a.categoryName ?? "zzz").localeCompare(b.categoryName ?? "zzz", "tr") ||
-            a.priority - b.priority
-        );
-      case "time":
-        return byStatusThen((a, b) => {
-          if (a.timeOfDay && b.timeOfDay) return a.timeOfDay.localeCompare(b.timeOfDay);
-          if (a.timeOfDay) return -1;
-          if (b.timeOfDay) return 1;
-          return a.priority - b.priority;
-        });
-      default:
-        return byStatusThen((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
-    }
-  }, [day, sortKey]);
+    const source = showingUndated ? undatedTasks : day?.tasks ?? [];
+    return sortTasks(source, sortKey);
+  }, [showingUndated, undatedTasks, day, sortKey]);
 
   const canDragReorder = view === "list" && sortKey === "manual";
 
   const applyLocalOrder = useCallback(
     (orderedIds: number[]) => {
+      if (showingUndated) {
+        setUndatedTasks((tasks) => {
+          const byId = new Map(tasks.map((t) => [t.id, t]));
+          const reordered = orderedIds
+            .map((id, index) => {
+              const t = byId.get(id);
+              return t ? { ...t, sortOrder: index + 1 } : null;
+            })
+            .filter((t): t is PusulaTask => t != null);
+          const remaining = tasks.filter((t) => !orderedIds.includes(t.id));
+          return [...reordered, ...remaining];
+        });
+        return;
+      }
+
       setWeekDays((days) =>
         days.map((d) => {
           if (d.date !== selectedDate) return d;
@@ -136,13 +184,12 @@ export const PusulaPage: React.FC = () => {
               return t ? { ...t, sortOrder: index + 1 } : null;
             })
             .filter((t): t is PusulaTask => t != null);
-          // Keep any tasks missing from orderedIds at the end.
           const remaining = d.tasks.filter((t) => !orderedIds.includes(t.id));
           return { ...d, tasks: [...reordered, ...remaining] };
         })
       );
     },
-    [selectedDate]
+    [selectedDate, showingUndated]
   );
 
   const handleReorderDrop = useCallback(
@@ -176,41 +223,87 @@ export const PusulaPage: React.FC = () => {
     [dragTaskId, sortedTasks, applyLocalOrder, selectedDate, load]
   );
 
-  const groupedByCategory = useMemo(() => {
-    if (sortKey !== "category") return null;
+  const groupedTasks = useMemo(() => {
+    if (sortKey !== "category" && sortKey !== "workType") return null;
     const groups = new Map<string, PusulaTask[]>();
     for (const t of sortedTasks) {
-      const key = t.categoryName ?? "Kategorisiz";
+      const key =
+        sortKey === "category"
+          ? (t.categoryName ?? "Kategorisiz")
+          : WORK_TYPE_LABELS[t.workType];
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(t);
     }
     return groups;
   }, [sortedTasks, sortKey]);
 
-  const handleQuickAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const title = quickTitle.trim();
-    if (!title || quickAdding) return;
-    setQuickAdding(true);
-    try {
-      const res = await pusulaApi.createTask({ title, date: selectedDate });
-      setQuickTitle("");
-      setTaskModal({ open: true, task: res.data });
-      await load();
-    } catch {
-      setError("Görev eklenemedi.");
-    } finally {
-      setQuickAdding(false);
-    }
-  };
+  const dayDurations = useMemo(() => {
+    if (!day) return { planned: 0, actual: 0 };
+    return day.tasks.reduce(
+      (acc, t) => ({
+        planned: acc.planned + (t.estimatedMinutes ?? 0),
+        actual: acc.actual + (t.actualMinutes ?? 0),
+      }),
+      { planned: 0, actual: 0 }
+    );
+  }, [day]);
 
-  const handleTaskChanged = useCallback((updated: PusulaTask) => {
-    setWeekDays((days) => recomputeDays(days, updated));
+  const handleTaskChanged = useCallback(
+    (updated: PusulaTask) => {
+      if (updated.date == null) {
+        setUndatedTasks((tasks) => {
+          const exists = tasks.some((t) => t.id === updated.id);
+          if (!exists) return [...tasks, updated];
+          return tasks.map((t) => (t.id === updated.id ? updated : t));
+        });
+        setWeekDays((days) =>
+          days.map((d) => {
+            if (!d.tasks.some((t) => t.id === updated.id)) return d;
+            const tasks = d.tasks.filter((t) => t.id !== updated.id);
+            return recomputeDaySummary(d, tasks);
+          })
+        );
+        return;
+      }
+
+      setUndatedTasks((tasks) => tasks.filter((t) => t.id !== updated.id));
+      setWeekDays((days) => {
+        let found = false;
+        const next = days.map((d) => {
+          if (d.date === updated.date) {
+            found = true;
+            const exists = d.tasks.some((t) => t.id === updated.id);
+            const tasks = exists
+              ? d.tasks.map((t) => (t.id === updated.id ? updated : t))
+              : [...d.tasks, updated];
+            return recomputeDaySummary(d, tasks);
+          }
+          if (d.tasks.some((t) => t.id === updated.id)) {
+            return recomputeDaySummary(
+              d,
+              d.tasks.filter((t) => t.id !== updated.id)
+            );
+          }
+          return d;
+        });
+        return found ? next : days;
+      });
+    },
+    []
+  );
+
+  const handleTaskDeleted = useCallback((taskId: number) => {
+    setUndatedTasks((tasks) => tasks.filter((t) => t.id !== taskId));
+    setWeekDays((days) =>
+      days.map((d) => {
+        if (!d.tasks.some((t) => t.id === taskId)) return d;
+        return recomputeDaySummary(
+          d,
+          d.tasks.filter((t) => t.id !== taskId)
+        );
+      })
+    );
   }, []);
-
-  const handleTaskDeleted = useCallback(() => {
-    void load();
-  }, [load]);
 
   const handleReschedule = async (taskId: number, date: string, timeOfDay: string) => {
     await pusulaApi.schedule(taskId, { date, timeOfDay });
@@ -218,6 +311,7 @@ export const PusulaPage: React.FC = () => {
   };
 
   const isToday = selectedDate === todayIso();
+  const cardDate = showingUndated ? null : selectedDate;
 
   return (
     <div className="max-w-5xl mx-auto space-y-5">
@@ -258,91 +352,122 @@ export const PusulaPage: React.FC = () => {
         </div>
       </div>
 
+      <SegmentedControl
+        size="sm"
+        ariaLabel="Görev kapsamı"
+        options={[
+          { id: "dated", label: "Planlanan" },
+          {
+            id: "undated",
+            label:
+              undatedTasks.length > 0
+                ? `Tarihsiz (${undatedTasks.filter((t) => t.status !== "completed").length})`
+                : "Tarihsiz",
+          },
+        ]}
+        value={scope}
+        onChange={(v) => {
+          setScope(v);
+          if (v === "undated") setView("list");
+        }}
+      />
+
       {/* Date nav + completion */}
-      <div className="rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5 p-4 space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={() => setSelectedDate(addDaysIso(selectedDate, -1))}
-            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5"
-            aria-label="Önceki gün"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <div className="text-center">
-            <p className="font-semibold">{formatDateTr(selectedDate)}</p>
-            {!isToday && (
-              <button
-                type="button"
-                onClick={() => setSelectedDate(todayIso())}
-                className="text-xs text-primary font-semibold"
-              >
-                Bugüne dön
-              </button>
-            )}
+      {!showingUndated && (
+        <div className="rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5 p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedDate(addDaysIso(selectedDate, -1))}
+              className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5"
+              aria-label="Önceki gün"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <div className="text-center">
+              <p className="font-semibold">{formatDateTr(selectedDate)}</p>
+              {!isToday && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(todayIso())}
+                  className="text-xs text-primary font-semibold"
+                >
+                  Bugüne dön
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedDate(addDaysIso(selectedDate, 1))}
+              className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5"
+              aria-label="Sonraki gün"
+            >
+              <ChevronRight size={18} />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setSelectedDate(addDaysIso(selectedDate, 1))}
-            className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5"
-            aria-label="Sonraki gün"
-          >
-            <ChevronRight size={18} />
-          </button>
+
+          {day && day.totalTasks > 0 && (
+            <div>
+              <div className="flex items-baseline justify-between text-sm mb-1.5">
+                <span className="font-semibold">
+                  Tamamlama: <span className="text-primary">%{day.completionPercent}</span>
+                </span>
+                <span className="text-xs text-slate-400">
+                  {day.completedTasks}/{day.totalTasks} görev
+                </span>
+              </div>
+              <div className="h-3 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-400 transition-all duration-700"
+                  style={{ width: `${Math.min(100, day.completionPercent)}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-500 mt-2">
+                <span>
+                  Planlanan:{" "}
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
+                    {formatMinutes(dayDurations.planned)}
+                  </span>
+                </span>
+                <span>
+                  Gerçekleşen:{" "}
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
+                    {formatMinutes(dayDurations.actual)}
+                  </span>
+                </span>
+              </div>
+            </div>
+          )}
         </div>
+      )}
 
-        {day && day.totalTasks > 0 && (
-          <div>
-            <div className="flex items-baseline justify-between text-sm mb-1.5">
-              <span className="font-semibold">
-                Tamamlama: <span className="text-primary">%{day.completionPercent}</span>
-              </span>
-              <span className="text-xs text-slate-400">
-                {day.completedTasks}/{day.totalTasks} görev
-              </span>
-            </div>
-            <div className="h-3 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-400 transition-all duration-700"
-                style={{ width: `${Math.min(100, day.completionPercent)}%` }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Quick add */}
-      <form onSubmit={handleQuickAdd} className="flex gap-2">
-        <input
-          value={quickTitle}
-          onChange={(e) => setQuickTitle(e.target.value)}
-          placeholder="Hızlı görev ekle..."
-          className="flex-1 p-3.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black/20 text-sm"
-        />
-        <button
-          type="submit"
-          disabled={quickAdding || !quickTitle.trim()}
-          className="px-5 rounded-2xl bg-primary text-white font-semibold disabled:opacity-40"
-          aria-label="Görev ekle"
-        >
-          <Plus size={20} />
-        </button>
-      </form>
+      {showingUndated && (
+        <div className="rounded-2xl bg-white dark:bg-black/20 border border-slate-200 dark:border-white/5 p-4">
+          <p className="font-semibold">Tarihsiz görevler</p>
+          <p className="text-sm text-slate-500 mt-1">
+            Tarih vermeden kaydettiğin backlog. Düzenleyerek bir güne planlayabilirsin.
+          </p>
+        </div>
+      )}
 
       {/* View + sort */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <SegmentedControl
-          size="sm"
-          ariaLabel="Görünüm"
-          options={[
-            { id: "list", label: "Liste" },
-            { id: "day", label: "Gün" },
-            { id: "week", label: "Hafta" },
-          ]}
-          value={view}
-          onChange={(v) => setView(v)}
-        />
-        {view === "list" && (
+        {!showingUndated ? (
+          <SegmentedControl
+            size="sm"
+            ariaLabel="Görünüm"
+            options={[
+              { id: "list", label: "Liste" },
+              { id: "day", label: "Gün" },
+              { id: "week", label: "Hafta" },
+            ]}
+            value={view}
+            onChange={(v) => setView(v)}
+          />
+        ) : (
+          <span className="text-xs font-semibold text-slate-400 px-1">Liste</span>
+        )}
+        {(view === "list" || showingUndated) && (
           <SegmentedControl
             size="sm"
             ariaLabel="Sıralama"
@@ -351,6 +476,7 @@ export const PusulaPage: React.FC = () => {
               { id: "time", label: "Saat" },
               { id: "priority", label: "Öncelik" },
               { id: "category", label: "Kategori" },
+              { id: "workType", label: "Tür" },
             ]}
             value={sortKey}
             onChange={(v) => setSortKey(v)}
@@ -362,19 +488,23 @@ export const PusulaPage: React.FC = () => {
 
       {loading ? (
         <p className="text-center py-16 text-slate-400 text-sm">Yükleniyor…</p>
-      ) : view === "list" ? (
-        sortedTasks.length === 0 ? null : groupedByCategory ? (
+      ) : showingUndated || view === "list" ? (
+        sortedTasks.length === 0 ? (
+          <p className="text-center py-12 text-sm text-slate-400">
+            {showingUndated ? "Tarihsiz görev yok." : null}
+          </p>
+        ) : groupedTasks ? (
           <div className="space-y-5">
-            {[...groupedByCategory.entries()].map(([cat, tasks]) => (
-              <div key={cat} className="space-y-2">
+            {[...groupedTasks.entries()].map(([group, tasks]) => (
+              <div key={group} className="space-y-2">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide px-1">
-                  {cat}
+                  {group}
                 </h3>
                 {tasks.map((t) => (
                   <PusulaTaskCard
                     key={t.id}
                     task={t}
-                    date={selectedDate}
+                    date={cardDate}
                     onChanged={handleTaskChanged}
                     onDeleted={handleTaskDeleted}
                     onEdit={(task) => setTaskModal({ open: true, task })}
@@ -389,7 +519,7 @@ export const PusulaPage: React.FC = () => {
               <PusulaTaskCard
                 key={t.id}
                 task={t}
-                date={selectedDate}
+                date={cardDate}
                 onChanged={handleTaskChanged}
                 onDeleted={handleTaskDeleted}
                 onEdit={(task) => setTaskModal({ open: true, task })}
@@ -429,7 +559,7 @@ export const PusulaPage: React.FC = () => {
         <PusulaTaskModal
           task={taskModal.task}
           categories={categories}
-          defaultDate={selectedDate}
+          defaultDate={showingUndated ? null : selectedDate}
           onClose={() => setTaskModal({ open: false, task: null })}
           onSaved={() => {
             setTaskModal({ open: false, task: null });
@@ -445,19 +575,14 @@ export const PusulaPage: React.FC = () => {
   );
 };
 
-/** Replace the task inside week days and recompute the affected day's summary. */
-function recomputeDays(days: PusulaDay[], updated: PusulaTask): PusulaDay[] {
-  return days.map((d) => {
-    if (d.date !== updated.date) return d;
-    const tasks = d.tasks.map((t) => (t.id === updated.id ? updated : t));
-    const total = tasks.length;
-    const completed = tasks.filter((t) => t.status === "completed").length;
-    return {
-      ...d,
-      tasks,
-      totalTasks: total,
-      completedTasks: completed,
-      completionPercent: total > 0 ? Math.round((completed * 1000) / total) / 10 : 0,
-    };
-  });
+function recomputeDaySummary(day: PusulaDay, tasks: PusulaTask[]): PusulaDay {
+  const total = tasks.length;
+  const completed = tasks.filter((t) => t.status === "completed").length;
+  return {
+    ...day,
+    tasks,
+    totalTasks: total,
+    completedTasks: completed,
+    completionPercent: total > 0 ? Math.round((completed * 1000) / total) / 10 : 0,
+  };
 }

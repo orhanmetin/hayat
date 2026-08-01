@@ -18,7 +18,7 @@ namespace Hayat.Application.DTOs
         int? CategoryId,
         string? CategoryName,
         string? RootCategoryName,
-        DateOnly Date,
+        DateOnly? Date,
         string? TimeOfDay,
         int? EstimatedMinutes,
         int? ActualMinutes,
@@ -55,7 +55,7 @@ namespace Hayat.Application.DTOs
         string Title,
         string? Note,
         int? CategoryId,
-        DateOnly Date,
+        DateOnly? Date,
         string? TimeOfDay,
         int? EstimatedMinutes,
         int? ActualMinutes,
@@ -64,11 +64,11 @@ namespace Hayat.Application.DTOs
         string? Recurrence,
         int? RecurrenceDay);
 
-    public record PusulaTaskStatusRequest(DateOnly Date, string? Status, int? ActualMinutes);
+    public record PusulaTaskStatusRequest(DateOnly? Date, string? Status, int? ActualMinutes);
     public record PusulaScheduleRequest(DateOnly? Date, string? TimeOfDay);
     public record PusulaReorderRequest(DateOnly Date, List<int> TaskIds);
     public record CreatePusulaStepRequest(string Title);
-    public record PusulaStepToggleRequest(DateOnly Date);
+    public record PusulaStepToggleRequest(DateOnly? Date);
 
     // --- Day review ---
     public record PusulaDayReviewDto(

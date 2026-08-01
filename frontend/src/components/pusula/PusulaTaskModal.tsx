@@ -4,7 +4,6 @@ import { X, Plus, Trash2 } from "lucide-react";
 import { pusulaApi } from "../../services/pusula";
 import type {
   PusulaCategory,
-  PusulaRecurrence,
   PusulaTask,
   PusulaWorkType,
 } from "../../types/pusula";
@@ -12,13 +11,13 @@ import { TimePickerDropdown } from "../ui/TimePickerDropdown";
 import { DatePickerTurkish } from "../ui/DatePickerTurkish";
 import { cn } from "../../lib/utils";
 
-const DAY_NAMES = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
-
 const PRIORITY_OPTIONS = [
   { value: 1, label: "High" },
   { value: 2, label: "Mid" },
   { value: 3, label: "Low" },
 ] as const;
+
+const CATEGORY_INDENT = "\u00A0\u00A0\u00A0";
 
 function parseTimeOfDay(value: string): { hours: number; minutes: number } {
   const [h, m] = value.split(":").map(Number);
@@ -51,17 +50,10 @@ function addDaysIso(base: string, days: number): string {
   return d.toLocaleDateString("sv-SE");
 }
 
-function endOfWeekIso(): string {
-  const now = new Date();
-  const dow = now.getDay();
-  const diff = dow === 0 ? 0 : 7 - dow;
-  return addDaysIso(todayIso(), diff);
-}
-
 interface PusulaTaskModalProps {
   task?: PusulaTask | null;
   categories: PusulaCategory[];
-  defaultDate: string;
+  defaultDate: string | null;
   onClose: () => void;
   onSaved: (task: PusulaTask) => void;
 }
@@ -77,7 +69,7 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
   const [title, setTitle] = useState(task?.title ?? "");
   const [note, setNote] = useState(task?.note ?? "");
   const [categoryId, setCategoryId] = useState<number | null>(task?.categoryId ?? null);
-  const [date, setDate] = useState(task?.date ?? defaultDate);
+  const [date, setDate] = useState<string | null>(task ? task.date : defaultDate);
   const [timeOfDay, setTimeOfDay] = useState(task?.timeOfDay ?? "");
   const [estimatedMinutes, setEstimatedMinutes] = useState<string>(
     task?.estimatedMinutes ? String(task.estimatedMinutes) : ""
@@ -87,10 +79,6 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
   );
   const [priority, setPriority] = useState(task?.priority ?? 3);
   const [workType, setWorkType] = useState<PusulaWorkType>(task?.workType ?? "none");
-  const [recurrence, setRecurrence] = useState<PusulaRecurrence>(task?.recurrence ?? "none");
-  const [recurrenceDay, setRecurrenceDay] = useState<number>(
-    task?.recurrenceDay ?? new Date().getDay()
-  );
   const [newSteps, setNewSteps] = useState<string[]>([]);
   const [stepDraft, setStepDraft] = useState("");
   const [saving, setSaving] = useState(false);
@@ -114,7 +102,6 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
   const quickDates = [
     { label: "Bugün", value: todayIso() },
     { label: "Yarın", value: addDaysIso(todayIso(), 1) },
-    { label: "Bu Hafta", value: endOfWeekIso() },
   ];
 
   const addStepDraft = () => {
@@ -136,14 +123,14 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
       title: title.trim(),
       note: note.trim() || null,
       categoryId,
-      date,
-      timeOfDay: recurrence === "none" && timeOfDay ? timeOfDay : null,
+      date: date ?? null,
+      timeOfDay: date && timeOfDay ? timeOfDay : null,
       estimatedMinutes: estimatedMinutes ? parseInt(estimatedMinutes, 10) || null : null,
       actualMinutes: actualMinutes ? parseInt(actualMinutes, 10) || null : null,
       priority,
       workType,
-      recurrence,
-      recurrenceDay: recurrence === "weekly" ? recurrenceDay : null,
+      recurrence: "none" as const,
+      recurrenceDay: null,
     };
     try {
       const res = isEdit
@@ -157,12 +144,13 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
     }
   };
 
+  // text-base (≥16px) prevents iOS Safari auto-zoom on focus
   const inputClass =
-    "w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent text-sm";
+    "w-full p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-transparent text-base";
   const labelClass = "block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5";
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center md:p-4">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4">
       <button
         type="button"
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -172,10 +160,10 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
       <div
         role="dialog"
         aria-modal="true"
-        className="relative z-10 w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-t-3xl md:rounded-2xl bg-white dark:bg-bg-dark border border-slate-200 dark:border-white/10 shadow-xl"
+        className="relative z-10 w-full max-w-2xl max-h-[min(92dvh,92vh)] flex flex-col rounded-t-3xl sm:rounded-2xl bg-white dark:bg-bg-dark border border-slate-200 dark:border-white/10 shadow-xl overscroll-contain"
       >
-        <div className="sticky top-0 z-10 bg-white dark:bg-bg-dark flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10">
-          <h2 className="font-semibold">{isEdit ? "Görevi Düzenle" : "Yeni Görev"}</h2>
+        <div className="sticky top-0 z-10 shrink-0 bg-white dark:bg-bg-dark flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10">
+          <h2 className="font-semibold text-base">{isEdit ? "Görevi Düzenle" : "Yeni Görev"}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -186,7 +174,10 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="p-4 space-y-4 overflow-y-auto flex-1 pb-[max(1rem,env(safe-area-inset-bottom))]"
+        >
           <div>
             <label className={labelClass}>Başlık *</label>
             <input
@@ -219,19 +210,16 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
               <option value="">Kategorisiz</option>
               {rootCategories.map((root) => {
                 const children = childrenOf(root.id);
-                return children.length > 0 ? (
-                  <optgroup key={root.id} label={root.name}>
-                    <option value={root.id}>{root.name} (genel)</option>
+                return (
+                  <React.Fragment key={root.id}>
+                    <option value={root.id}>{root.name}</option>
                     {children.map((c) => (
                       <option key={c.id} value={c.id}>
+                        {CATEGORY_INDENT}
                         {c.name}
                       </option>
                     ))}
-                  </optgroup>
-                ) : (
-                  <option key={root.id} value={root.id}>
-                    {root.name}
-                  </option>
+                  </React.Fragment>
                 );
               })}
             </select>
@@ -240,13 +228,28 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
           <div>
             <label className={labelClass}>Tarih</label>
             <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDate(null);
+                  setTimeOfDay("");
+                }}
+                className={cn(
+                  "px-3 py-2 rounded-xl text-sm font-semibold border transition-colors",
+                  date === null
+                    ? "bg-primary text-white border-primary"
+                    : "border-slate-200 dark:border-white/10 text-slate-500 hover:border-primary/50"
+                )}
+              >
+                Tarihsiz
+              </button>
               {quickDates.map((q) => (
                 <button
                   key={q.label}
                   type="button"
                   onClick={() => setDate(q.value)}
                   className={cn(
-                    "px-3 py-2 rounded-xl text-xs font-semibold border transition-colors",
+                    "px-3 py-2 rounded-xl text-sm font-semibold border transition-colors",
                     date === q.value
                       ? "bg-primary text-white border-primary"
                       : "border-slate-200 dark:border-white/10 text-slate-500 hover:border-primary/50"
@@ -255,15 +258,26 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
                   {q.label}
                 </button>
               ))}
-              <DatePickerTurkish
-                value={isoToLocalDate(date)}
-                onChange={(d) => setDate(localDateToIso(d))}
-              />
+              {date !== null ? (
+                <DatePickerTurkish
+                  value={isoToLocalDate(date)}
+                  onChange={(d) => setDate(localDateToIso(d))}
+                  className="min-w-[10rem] flex-1"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setDate(todayIso())}
+                  className="px-3 py-2 rounded-xl text-sm font-semibold border border-slate-200 dark:border-white/10 text-slate-500 hover:border-primary/50"
+                >
+                  Tarih seç…
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {recurrence === "none" && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {date !== null && (
               <div>
                 <label className={labelClass}>Saat</label>
                 {timeOfDay ? (
@@ -297,6 +311,7 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
               <label className={labelClass}>Tahmini Süre (dk)</label>
               <input
                 type="number"
+                inputMode="numeric"
                 min={0}
                 step={5}
                 value={estimatedMinutes}
@@ -309,6 +324,7 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
               <label className={labelClass}>Gerçekleşen Süre (dk)</label>
               <input
                 type="number"
+                inputMode="numeric"
                 min={0}
                 step={5}
                 value={actualMinutes}
@@ -345,51 +361,6 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
           </div>
 
           <div>
-            <label className={labelClass}>Tekrarlama</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(
-                [
-                  { id: "none", label: "Yok" },
-                  { id: "daily", label: "Günde 1" },
-                  { id: "weekly", label: "Haftada 1" },
-                ] as const
-              ).map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setRecurrence(opt.id)}
-                  className={cn(
-                    "py-2.5 rounded-xl text-sm font-semibold border transition-colors",
-                    recurrence === opt.id
-                      ? "bg-primary text-white border-primary"
-                      : "border-slate-200 dark:border-white/10 text-slate-500"
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            {recurrence === "weekly" && (
-              <select
-                value={recurrenceDay}
-                onChange={(e) => setRecurrenceDay(Number(e.target.value))}
-                className={cn(inputClass, "mt-2")}
-              >
-                {DAY_NAMES.map((name, i) => (
-                  <option key={i} value={i}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            )}
-            {recurrence !== "none" && (
-              <p className="text-[11px] text-slate-400 mt-1.5">
-                Tekrarlayan görevler saat almaz; günün listesinde bağımsız görünür.
-              </p>
-            )}
-          </div>
-
-          <div>
             <label className={labelClass}>Görev Türü</label>
             <div className="grid grid-cols-3 gap-2">
               {(
@@ -423,7 +394,7 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
                 {newSteps.map((s, i) => (
                   <div
                     key={i}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 text-sm"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/5 text-base"
                   >
                     <span className="flex-1">{s}</span>
                     <button
@@ -468,14 +439,14 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-white/10 font-semibold"
+              className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-white/10 font-semibold text-base"
             >
               İptal
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 py-3 rounded-xl bg-primary text-white font-semibold disabled:opacity-60"
+              className="flex-1 py-3 rounded-xl bg-primary text-white font-semibold disabled:opacity-60 text-base"
             >
               {saving ? "Kaydediliyor..." : isEdit ? "Güncelle" : "Oluştur"}
             </button>

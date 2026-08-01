@@ -138,7 +138,7 @@ namespace Hayat.Infrastructure.Data
                         "CategoryId" INTEGER NULL,
                         "Title" TEXT NOT NULL,
                         "Note" TEXT NULL,
-                        "Date" TEXT NOT NULL,
+                        "Date" TEXT NULL,
                         "TimeOfDay" TEXT NULL,
                         "EstimatedMinutes" INTEGER NULL,
                         "ActualMinutes" INTEGER NULL,
@@ -204,6 +204,79 @@ namespace Hayat.Infrastructure.Data
                     ALTER TABLE "PusulaTasks" ADD COLUMN "SortOrder" INTEGER NOT NULL DEFAULT 0;
                     """);
                 logger?.LogInformation("Added SortOrder to PusulaTasks.");
+            }
+
+            if (TableExists(context, "PusulaTasks") && IsColumnNotNull(context, "PusulaTasks", "Date"))
+            {
+                // SQLite cannot ALTER COLUMN nullability — rebuild the table.
+                var connection = context.Database.GetDbConnection();
+                if (connection.State != ConnectionState.Open)
+                    connection.Open();
+
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "PRAGMA foreign_keys = OFF;";
+                    command.ExecuteNonQuery();
+                }
+
+                using (var transaction = connection.BeginTransaction())
+                {
+                    void Exec(string sql)
+                    {
+                        using var command = connection.CreateCommand();
+                        command.Transaction = transaction;
+                        command.CommandText = sql;
+                        command.ExecuteNonQuery();
+                    }
+
+                    Exec("""
+                        CREATE TABLE "PusulaTasks_new" (
+                            "Id" INTEGER NOT NULL CONSTRAINT "PK_PusulaTasks" PRIMARY KEY AUTOINCREMENT,
+                            "UserId" INTEGER NOT NULL,
+                            "CategoryId" INTEGER NULL,
+                            "Title" TEXT NOT NULL,
+                            "Note" TEXT NULL,
+                            "Date" TEXT NULL,
+                            "TimeOfDay" TEXT NULL,
+                            "EstimatedMinutes" INTEGER NULL,
+                            "ActualMinutes" INTEGER NULL,
+                            "Priority" INTEGER NOT NULL DEFAULT 3,
+                            "Recurrence" INTEGER NOT NULL DEFAULT 0,
+                            "RecurrenceDay" INTEGER NULL,
+                            "WorkType" INTEGER NOT NULL DEFAULT 0,
+                            "Status" INTEGER NOT NULL DEFAULT 0,
+                            "CompletedAt" TEXT NULL,
+                            "CreatedAt" TEXT NOT NULL,
+                            "SortOrder" INTEGER NOT NULL DEFAULT 0,
+                            CONSTRAINT "FK_PusulaTasks_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+                            CONSTRAINT "FK_PusulaTasks_PusulaCategories_CategoryId" FOREIGN KEY ("CategoryId") REFERENCES "PusulaCategories" ("Id") ON DELETE SET NULL
+                        );
+                        """);
+                    Exec("""
+                        INSERT INTO "PusulaTasks_new" (
+                            "Id", "UserId", "CategoryId", "Title", "Note", "Date", "TimeOfDay",
+                            "EstimatedMinutes", "ActualMinutes", "Priority", "Recurrence", "RecurrenceDay",
+                            "WorkType", "Status", "CompletedAt", "CreatedAt", "SortOrder"
+                        )
+                        SELECT
+                            "Id", "UserId", "CategoryId", "Title", "Note", "Date", "TimeOfDay",
+                            "EstimatedMinutes", "ActualMinutes", "Priority", "Recurrence", "RecurrenceDay",
+                            "WorkType", "Status", "CompletedAt", "CreatedAt", "SortOrder"
+                        FROM "PusulaTasks";
+                        """);
+                    Exec("""DROP TABLE "PusulaTasks";""");
+                    Exec("""ALTER TABLE "PusulaTasks_new" RENAME TO "PusulaTasks";""");
+                    Exec("""CREATE INDEX IF NOT EXISTS "IX_PusulaTasks_UserId_Date" ON "PusulaTasks" ("UserId", "Date");""");
+                    transaction.Commit();
+                }
+
+                using (var command = connection.CreateCommand())
+                {
+                    command.CommandText = "PRAGMA foreign_keys = ON;";
+                    command.ExecuteNonQuery();
+                }
+
+                logger?.LogInformation("Made PusulaTasks.Date nullable.");
             }
 
             // Hard-delete soft-deleted Pusula categories (e.g. duplicate inactive "Kişisel").
@@ -382,6 +455,32 @@ namespace Hayat.Infrastructure.Data
                     var name = reader.GetString(1);
                     if (string.Equals(name, columnName, StringComparison.OrdinalIgnoreCase))
                         return true;
+                }
+                return false;
+            }
+            catch (SqliteException)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>PRAGMA table_info notnull flag (1 = NOT NULL).</summary>
+        private static bool IsColumnNotNull(AppDbContext context, string tableName, string columnName)
+        {
+            try
+            {
+                var connection = context.Database.GetDbConnection();
+                if (connection.State != ConnectionState.Open)
+                    connection.Open();
+
+                using var command = connection.CreateCommand();
+                command.CommandText = $"PRAGMA table_info(\"{tableName}\");";
+                using var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    var name = reader.GetString(1);
+                    if (string.Equals(name, columnName, StringComparison.OrdinalIgnoreCase))
+                        return reader.GetInt32(3) == 1;
                 }
                 return false;
             }
