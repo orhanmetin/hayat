@@ -190,6 +190,13 @@ namespace Hayat.Infrastructure.Data
                         "StartVision" TEXT NULL,
                         "EndReflection" TEXT NULL,
                         "FeelingScore" INTEGER NULL,
+                        "PerformanceCapturedAt" TEXT NULL,
+                        "SnapshotTotalTasks" INTEGER NULL,
+                        "SnapshotCompletedTasks" INTEGER NULL,
+                        "SnapshotCompletionPercent" REAL NULL,
+                        "SnapshotPlannedMinutes" INTEGER NULL,
+                        "SnapshotActualMinutes" INTEGER NULL,
+                        "SnapshotCategoryJson" TEXT NULL,
                         "UpdatedAt" TEXT NOT NULL,
                         CONSTRAINT "FK_PusulaDayReviews_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
                     );
@@ -277,6 +284,33 @@ namespace Hayat.Infrastructure.Data
                 }
 
                 logger?.LogInformation("Made PusulaTasks.Date nullable.");
+            }
+
+            if (TableExists(context, "PusulaDayReviews")
+                && !ColumnExists(context, "PusulaDayReviews", "PerformanceCapturedAt"))
+            {
+                context.Database.ExecuteSqlRaw("""
+                    ALTER TABLE "PusulaDayReviews" ADD COLUMN "PerformanceCapturedAt" TEXT NULL;
+                    """);
+                context.Database.ExecuteSqlRaw("""
+                    ALTER TABLE "PusulaDayReviews" ADD COLUMN "SnapshotTotalTasks" INTEGER NULL;
+                    """);
+                context.Database.ExecuteSqlRaw("""
+                    ALTER TABLE "PusulaDayReviews" ADD COLUMN "SnapshotCompletedTasks" INTEGER NULL;
+                    """);
+                context.Database.ExecuteSqlRaw("""
+                    ALTER TABLE "PusulaDayReviews" ADD COLUMN "SnapshotCompletionPercent" REAL NULL;
+                    """);
+                context.Database.ExecuteSqlRaw("""
+                    ALTER TABLE "PusulaDayReviews" ADD COLUMN "SnapshotPlannedMinutes" INTEGER NULL;
+                    """);
+                context.Database.ExecuteSqlRaw("""
+                    ALTER TABLE "PusulaDayReviews" ADD COLUMN "SnapshotActualMinutes" INTEGER NULL;
+                    """);
+                context.Database.ExecuteSqlRaw("""
+                    ALTER TABLE "PusulaDayReviews" ADD COLUMN "SnapshotCategoryJson" TEXT NULL;
+                    """);
+                logger?.LogInformation("Added day-end performance snapshot columns to PusulaDayReviews.");
             }
 
             // Hard-delete soft-deleted Pusula categories (e.g. duplicate inactive "Kişisel").

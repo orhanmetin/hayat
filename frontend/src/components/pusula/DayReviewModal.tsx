@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, Sunrise, Sunset, Star } from "lucide-react";
 import { pusulaApi } from "../../services/pusula";
-import type { PusulaDay, PusulaTask } from "../../types/pusula";
+import type { PusulaDayReview, PusulaDayReviewPerformance } from "../../types/pusula";
 import { DatePickerTurkish } from "../ui/DatePickerTurkish";
 import { formatMinutes } from "../../lib/format";
 import { cn } from "../../lib/utils";
@@ -18,8 +18,16 @@ function localDateToIso(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-function rootCategoryLabel(task: PusulaTask): string {
-  return task.rootCategoryName ?? task.categoryName ?? "Kategorisiz";
+function formatCapturedAt(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("tr-TR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 interface DayReviewModalProps {
@@ -33,7 +41,7 @@ export const DayReviewModal: React.FC<DayReviewModalProps> = ({ initialDate, onC
   const [startVision, setStartVision] = useState("");
   const [endReflection, setEndReflection] = useState("");
   const [feelingScore, setFeelingScore] = useState<number | null>(null);
-  const [dayStats, setDayStats] = useState<PusulaDay | null>(null);
+  const [performance, setPerformance] = useState<PusulaDayReviewPerformance | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -47,18 +55,19 @@ export const DayReviewModal: React.FC<DayReviewModalProps> = ({ initialDate, onC
     };
   }, []);
 
+  const applyReview = (review: PusulaDayReview) => {
+    setStartVision(review.startVision ?? "");
+    setEndReflection(review.endReflection ?? "");
+    setFeelingScore(review.feelingScore);
+    setPerformance(review.performance);
+  };
+
   const load = useCallback(async (d: string) => {
     setLoading(true);
     setError(null);
     try {
-      const [reviewRes, daysRes] = await Promise.all([
-        pusulaApi.getDayReview(d),
-        pusulaApi.getDays(d),
-      ]);
-      setStartVision(reviewRes.data.startVision ?? "");
-      setEndReflection(reviewRes.data.endReflection ?? "");
-      setFeelingScore(reviewRes.data.feelingScore);
-      setDayStats(daysRes.data[0] ?? null);
+      const reviewRes = await pusulaApi.getDayReview(d);
+      applyReview(reviewRes.data);
     } catch {
       setError("Veriler yüklenemedi.");
     } finally {
@@ -70,45 +79,19 @@ export const DayReviewModal: React.FC<DayReviewModalProps> = ({ initialDate, onC
     void load(date);
   }, [date, load]);
 
-  const categoryDurations = useMemo(() => {
-    const tasks = dayStats?.tasks ?? [];
-    const groups = new Map<string, { planned: number; actual: number }>();
-    for (const t of tasks) {
-      const key = rootCategoryLabel(t);
-      const current = groups.get(key) ?? { planned: 0, actual: 0 };
-      current.planned += t.estimatedMinutes ?? 0;
-      current.actual += t.actualMinutes ?? 0;
-      groups.set(key, current);
-    }
-    return [...groups.entries()]
-      .map(([name, totals]) => ({ name, ...totals }))
-      .sort((a, b) => a.name.localeCompare(b.name, "tr"));
-  }, [dayStats]);
-
-  const dayDurations = useMemo(
-    () =>
-      categoryDurations.reduce(
-        (acc, row) => ({
-          planned: acc.planned + row.planned,
-          actual: acc.actual + row.actual,
-        }),
-        { planned: 0, actual: 0 }
-      ),
-    [categoryDurations]
-  );
-
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
     setError(null);
     try {
-      await pusulaApi.upsertDayReview({
+      const res = await pusulaApi.upsertDayReview({
         date,
         mode,
         startVision: mode === "start" ? startVision : undefined,
         endReflection: mode === "end" ? endReflection : undefined,
         feelingScore: mode === "end" ? feelingScore : undefined,
       });
+      applyReview(res.data);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch {
@@ -195,52 +178,16 @@ export const DayReviewModal: React.FC<DayReviewModalProps> = ({ initialDate, onC
             </div>
           ) : (
             <div className="space-y-4">
-              {dayStats && (
-                <div className="space-y-3">
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 text-center">
-                    <p className="text-2xl font-bold">
-                      {dayStats.completedTasks}
-                      <span className="text-sm font-medium text-slate-400">
-                        /{dayStats.totalTasks}
-                      </span>
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      Tamamlanan / Planlanan
-                      {dayStats.totalTasks > 0 ? ` · %${dayStats.completionPercent}` : ""}
-                    </p>
-                    {(dayDurations.planned > 0 || dayDurations.actual > 0) && (
-                      <p className="text-xs text-slate-500 mt-2">
-                        Süre: {formatMinutes(dayDurations.planned)} planlanan ·{" "}
-                        {formatMinutes(dayDurations.actual)} gerçekleşen
-                      </p>
-                    )}
-                  </div>
-
-                  {categoryDurations.length > 0 && (
-                    <div className="rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden">
-                      <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 bg-slate-50 dark:bg-white/5">
-                        <span>Ana kategori</span>
-                        <span className="text-right">Plan</span>
-                        <span className="text-right">Gerçek</span>
-                      </div>
-                      <div className="divide-y divide-slate-100 dark:divide-white/5">
-                        {categoryDurations.map((row) => (
-                          <div
-                            key={row.name}
-                            className="grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-2.5 text-sm items-center"
-                          >
-                            <span className="font-medium truncate">{row.name}</span>
-                            <span className="text-right text-slate-500 tabular-nums min-w-[4.5rem]">
-                              {formatMinutes(row.planned)}
-                            </span>
-                            <span className="text-right font-semibold tabular-nums min-w-[4.5rem]">
-                              {formatMinutes(row.actual)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+              {performance ? (
+                <PerformanceSnapshotCard performance={performance} />
+              ) : (
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 text-sm text-slate-500 leading-relaxed">
+                  Henüz sabitlenmiş performans yok.{" "}
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
+                    Kaydet
+                  </span>{" "}
+                  dediğinde o anki gün performansı kayda alınır ve sonraki görev
+                  değişikliklerinden etkilenmez.
                 </div>
               )}
 
@@ -304,7 +251,15 @@ export const DayReviewModal: React.FC<DayReviewModalProps> = ({ initialDate, onC
                 saved ? "bg-emerald-500" : "bg-primary"
               )}
             >
-              {saving ? "Kaydediliyor..." : saved ? "Kaydedildi ✓" : "Kaydet"}
+              {saving
+                ? "Kaydediliyor..."
+                : saved
+                  ? "Kaydedildi ✓"
+                  : mode === "end"
+                    ? performance
+                      ? "Güncelle"
+                      : "Kaydet ve sabitle"
+                    : "Kaydet"}
             </button>
           </div>
         </div>
@@ -313,3 +268,64 @@ export const DayReviewModal: React.FC<DayReviewModalProps> = ({ initialDate, onC
     document.body
   );
 };
+
+function PerformanceSnapshotCard({
+  performance,
+}: {
+  performance: PusulaDayReviewPerformance;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 text-center">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1">
+          Sabitlenmiş performans
+        </p>
+        <p className="text-2xl font-bold">
+          {performance.completedTasks}
+          <span className="text-sm font-medium text-slate-400">
+            /{performance.totalTasks}
+          </span>
+        </p>
+        <p className="text-[11px] text-slate-400 mt-0.5">
+          Tamamlanan / Planlanan
+          {performance.totalTasks > 0 ? ` · %${performance.completionPercent}` : ""}
+        </p>
+        {(performance.plannedMinutes > 0 || performance.actualMinutes > 0) && (
+          <p className="text-xs text-slate-500 mt-2">
+            Süre: {formatMinutes(performance.plannedMinutes)} planlanan ·{" "}
+            {formatMinutes(performance.actualMinutes)} gerçekleşen
+          </p>
+        )}
+        <p className="text-[11px] text-slate-400 mt-2">
+          Kayıt: {formatCapturedAt(performance.capturedAt)}
+        </p>
+      </div>
+
+      {performance.categories.length > 0 && (
+        <div className="rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden">
+          <div className="grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400 bg-slate-50 dark:bg-white/5">
+            <span>Ana kategori</span>
+            <span className="text-right">Plan</span>
+            <span className="text-right">Gerçek</span>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-white/5">
+            {performance.categories.map((row) => (
+              <div
+                key={row.name}
+                className="grid grid-cols-[1fr_auto_auto] gap-2 px-3 py-2.5 text-sm items-center"
+              >
+                <span className="font-medium truncate">{row.name}</span>
+                <span className="text-right text-slate-500 tabular-nums min-w-[4.5rem]">
+                  {formatMinutes(row.plannedMinutes)}
+                </span>
+                <span className="text-right font-semibold tabular-nums min-w-[4.5rem]">
+                  {formatMinutes(row.actualMinutes)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -60,12 +60,29 @@ export interface PusulaTaskInput {
   steps?: string[];
 }
 
+export interface PusulaDayReviewCategorySnapshot {
+  name: string;
+  plannedMinutes: number;
+  actualMinutes: number;
+}
+
+export interface PusulaDayReviewPerformance {
+  capturedAt: string;
+  totalTasks: number;
+  completedTasks: number;
+  completionPercent: number;
+  plannedMinutes: number;
+  actualMinutes: number;
+  categories: PusulaDayReviewCategorySnapshot[];
+}
+
 export interface PusulaDayReview {
   date: string;
   startVision: string | null;
   endReflection: string | null;
   feelingScore: number | null;
   updatedAt: string | null;
+  performance: PusulaDayReviewPerformance | null;
 }
 
 export interface PusulaTrendBucket {

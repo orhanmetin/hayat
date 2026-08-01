@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Hayat.Application.Common;
@@ -415,8 +416,8 @@ namespace Hayat.Infrastructure.Services
             var review = await _db.PusulaDayReviews.AsNoTracking()
                 .FirstOrDefaultAsync(r => r.UserId == userId && r.Date == date);
             return review == null
-                ? new PusulaDayReviewDto(date, null, null, null, null)
-                : new PusulaDayReviewDto(review.Date, review.StartVision, review.EndReflection, review.FeelingScore, review.UpdatedAt);
+                ? new PusulaDayReviewDto(date, null, null, null, null, null)
+                : MapDayReview(review);
         }
 
         public async Task<PusulaDayReviewDto> UpsertDayReviewAsync(int userId, UpsertPusulaDayReviewRequest request)
@@ -433,6 +434,7 @@ namespace Hayat.Infrastructure.Services
             {
                 review.EndReflection = NullIfEmpty(request.EndReflection);
                 review.FeelingScore = request.FeelingScore is >= 1 and <= 5 ? request.FeelingScore : null;
+                await CaptureDayEndPerformanceAsync(userId, request.Date, review);
             }
             else
             {
@@ -441,7 +443,75 @@ namespace Hayat.Infrastructure.Services
 
             review.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
-            return new PusulaDayReviewDto(review.Date, review.StartVision, review.EndReflection, review.FeelingScore, review.UpdatedAt);
+            return MapDayReview(review);
+        }
+
+        private async Task CaptureDayEndPerformanceAsync(int userId, DateOnly date, PusulaDayReview review)
+        {
+            var tasks = await LoadTasksForRangeAsync(userId, date, date);
+            var day = BuildDay(date, tasks);
+
+            var categories = day.Tasks
+                .GroupBy(t => t.RootCategoryName ?? t.CategoryName ?? "Kategorisiz")
+                .Select(g => new PusulaDayReviewCategorySnapshotDto(
+                    g.Key,
+                    g.Sum(t => t.EstimatedMinutes ?? 0),
+                    g.Sum(t => t.ActualMinutes ?? 0)))
+                .OrderBy(c => c.Name, StringComparer.Create(new CultureInfo("tr-TR"), ignoreCase: true))
+                .ToList();
+
+            review.PerformanceCapturedAt = DateTime.UtcNow;
+            review.SnapshotTotalTasks = day.TotalTasks;
+            review.SnapshotCompletedTasks = day.CompletedTasks;
+            review.SnapshotCompletionPercent = day.CompletionPercent;
+            review.SnapshotPlannedMinutes = categories.Sum(c => c.PlannedMinutes);
+            review.SnapshotActualMinutes = categories.Sum(c => c.ActualMinutes);
+            review.SnapshotCategoryJson = JsonSerializer.Serialize(categories);
+        }
+
+        private static PusulaDayReviewDto MapDayReview(PusulaDayReview review) =>
+            new(
+                review.Date,
+                review.StartVision,
+                review.EndReflection,
+                review.FeelingScore,
+                review.UpdatedAt,
+                MapPerformance(review));
+
+        private static PusulaDayReviewPerformanceDto? MapPerformance(PusulaDayReview review)
+        {
+            if (review.PerformanceCapturedAt == null
+                || review.SnapshotTotalTasks == null
+                || review.SnapshotCompletedTasks == null
+                || review.SnapshotCompletionPercent == null
+                || review.SnapshotPlannedMinutes == null
+                || review.SnapshotActualMinutes == null)
+            {
+                return null;
+            }
+
+            var categories = Array.Empty<PusulaDayReviewCategorySnapshotDto>();
+            if (!string.IsNullOrWhiteSpace(review.SnapshotCategoryJson))
+            {
+                try
+                {
+                    categories = JsonSerializer.Deserialize<PusulaDayReviewCategorySnapshotDto[]>(
+                        review.SnapshotCategoryJson) ?? Array.Empty<PusulaDayReviewCategorySnapshotDto>();
+                }
+                catch (JsonException)
+                {
+                    categories = Array.Empty<PusulaDayReviewCategorySnapshotDto>();
+                }
+            }
+
+            return new PusulaDayReviewPerformanceDto(
+                review.PerformanceCapturedAt.Value,
+                review.SnapshotTotalTasks.Value,
+                review.SnapshotCompletedTasks.Value,
+                review.SnapshotCompletionPercent.Value,
+                review.SnapshotPlannedMinutes.Value,
+                review.SnapshotActualMinutes.Value,
+                categories);
         }
 
         // ---------- Reports ----------
