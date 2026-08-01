@@ -64,6 +64,14 @@ namespace Hayat.Api.Controllers
             return Ok(await _service.GetDaysAsync(userId.Value, start, end));
         }
 
+        [HttpGet("tasks/undated")]
+        public async Task<IActionResult> GetUndatedTasks()
+        {
+            var userId = GetUserId();
+            if (userId == null) return UnauthorizedUser();
+            return Ok(await _service.GetUndatedTasksAsync(userId.Value));
+        }
+
         [HttpPost("tasks")]
         public async Task<IActionResult> CreateTask([FromBody] CreatePusulaTaskRequest request)
         {
@@ -125,7 +133,7 @@ namespace Hayat.Api.Controllers
         {
             var userId = GetUserId();
             if (userId == null) return UnauthorizedUser();
-            var result = await _service.AddStepAsync(userId.Value, id, request, date ?? AppTime.Today);
+            var result = await _service.AddStepAsync(userId.Value, id, request, date);
             return result == null ? NotFound() : Ok(result);
         }
 
@@ -134,7 +142,7 @@ namespace Hayat.Api.Controllers
         {
             var userId = GetUserId();
             if (userId == null) return UnauthorizedUser();
-            var result = await _service.DeleteStepAsync(userId.Value, id, date ?? AppTime.Today);
+            var result = await _service.DeleteStepAsync(userId.Value, id, date);
             return result == null ? NotFound() : Ok(result);
         }
 

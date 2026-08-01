@@ -30,7 +30,7 @@ const PRIORITY_LABELS: Record<number, string> = {
 
 interface PusulaTaskCardProps {
   task: PusulaTask;
-  date: string;
+  date: string | null;
   onChanged: (task: PusulaTask) => void;
   onDeleted: (taskId: number) => void;
   onEdit: (task: PusulaTask) => void;

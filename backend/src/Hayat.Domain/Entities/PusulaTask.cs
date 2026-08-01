@@ -26,8 +26,8 @@ namespace Hayat.Domain.Entities
         public string Title { get; set; } = string.Empty;
         public string? Note { get; set; }
 
-        /// <summary>Planned date (for recurring tasks: the start date).</summary>
-        public DateOnly Date { get; set; }
+        /// <summary>Planned date (null = undated backlog). For recurring tasks: the start date.</summary>
+        public DateOnly? Date { get; set; }
         public TimeOnly? TimeOfDay { get; set; }
         public int? EstimatedMinutes { get; set; }
         public int? ActualMinutes { get; set; }
