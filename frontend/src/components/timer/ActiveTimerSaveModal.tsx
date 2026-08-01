@@ -20,7 +20,10 @@ interface ActiveTimerSaveModalProps {
   finishAt: string;
   deepWorkTypes: LookupType[];
   meditationTypes: LookupType[];
-  onClose: () => void;
+  /** Resume the running timer without creating a log. */
+  onResume: () => void;
+  /** Discard the timer without creating a log. */
+  onDiscard: () => void | Promise<void>;
   onSaved: () => void;
 }
 
@@ -29,7 +32,8 @@ export const ActiveTimerSaveModal: React.FC<ActiveTimerSaveModalProps> = ({
   finishAt,
   deepWorkTypes,
   meditationTypes,
-  onClose,
+  onResume,
+  onDiscard,
   onSaved,
 }) => {
   const [kind, setKind] = useState<TimerActivityKind>("deepwork");
@@ -40,6 +44,7 @@ export const ActiveTimerSaveModal: React.FC<ActiveTimerSaveModalProps> = ({
   );
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [linkTask, setLinkTask] = useState(false);
   const [dayTasks, setDayTasks] = useState<PusulaTask[]>([]);
@@ -125,6 +130,26 @@ export const ActiveTimerSaveModal: React.FC<ActiveTimerSaveModalProps> = ({
     }
   };
 
+  const handleDiscard = async () => {
+    if (saving || discarding) return;
+    if (
+      !window.confirm(
+        "Zamanlayıcı silinsin mi? Bu süre için kayıt oluşturulmayacak."
+      )
+    ) {
+      return;
+    }
+    setDiscarding(true);
+    setError(null);
+    try {
+      await onDiscard();
+    } catch {
+      setError("Zamanlayıcı silinemedi.");
+      setDiscarding(false);
+    }
+  };
+
+  const busy = saving || discarding;
   const subtypeOptions = kind === "deepwork" ? deepWorkTypes : meditationTypes;
   const subtypeId = kind === "deepwork" ? deepWorkTypeId : meditationTypeId;
   const setSubtypeId = kind === "deepwork" ? setDeepWorkTypeId : setMeditationTypeId;
@@ -137,8 +162,9 @@ export const ActiveTimerSaveModal: React.FC<ActiveTimerSaveModalProps> = ({
       <button
         type="button"
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-        aria-label="Kapat"
+        onClick={onResume}
+        disabled={busy}
+        aria-label="Zamanlayıcıya dön"
       />
       <div
         role="dialog"
@@ -152,9 +178,10 @@ export const ActiveTimerSaveModal: React.FC<ActiveTimerSaveModalProps> = ({
           </h2>
           <button
             type="button"
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5"
-            aria-label="Kapat"
+            onClick={onResume}
+            disabled={busy}
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 disabled:opacity-50"
+            aria-label="Zamanlayıcıya dön"
           >
             <X size={20} />
           </button>
@@ -274,20 +301,31 @@ export const ActiveTimerSaveModal: React.FC<ActiveTimerSaveModalProps> = ({
 
           {error && <p className="text-sm text-red-500">{error}</p>}
 
-          <div className="flex gap-2 pt-1">
+          <div className="flex flex-col gap-2 pt-1">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onResume}
+                disabled={busy}
+                className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-white/10 font-semibold disabled:opacity-60"
+              >
+                Devam Et
+              </button>
+              <button
+                type="submit"
+                disabled={busy}
+                className="flex-1 py-3 rounded-xl bg-primary text-white font-semibold disabled:opacity-60"
+              >
+                {saving ? "Kaydediliyor..." : "Kaydet"}
+              </button>
+            </div>
             <button
               type="button"
-              onClick={onClose}
-              className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-white/10 font-semibold"
+              onClick={() => void handleDiscard()}
+              disabled={busy}
+              className="w-full py-3 rounded-xl text-red-600 dark:text-red-400 font-semibold hover:bg-red-500/10 disabled:opacity-60"
             >
-              İptal
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 py-3 rounded-xl bg-primary text-white font-semibold disabled:opacity-60"
-            >
-              {saving ? "Kaydediliyor..." : "Kaydet"}
+              {discarding ? "Siliniyor..." : "Sil"}
             </button>
           </div>
         </form>
