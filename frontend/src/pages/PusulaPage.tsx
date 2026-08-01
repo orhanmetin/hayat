@@ -20,6 +20,7 @@ import { PusulaTaskModal } from "../components/pusula/PusulaTaskModal";
 import { PusulaCalendar } from "../components/pusula/PusulaCalendar";
 import { DayReviewModal } from "../components/pusula/DayReviewModal";
 import { SegmentedControl } from "../components/dashboard/SegmentedControl";
+import { formatMinutes } from "../lib/format";
 
 type SortKey = "manual" | "time" | "priority" | "category" | "workType";
 type ViewKey = "list" | "day" | "week";
@@ -110,8 +111,6 @@ export const PusulaPage: React.FC = () => {
   const [sortKey, setSortKey] = useState<SortKey>("manual");
   const [view, setView] = useState<ViewKey>("list");
   const [scope, setScope] = useState<ScopeKey>("dated");
-  const [quickTitle, setQuickTitle] = useState("");
-  const [quickAdding, setQuickAdding] = useState(false);
   const [dragTaskId, setDragTaskId] = useState<number | null>(null);
   const [dropTargetId, setDropTargetId] = useState<number | null>(null);
   const [taskModal, setTaskModal] = useState<{ open: boolean; task: PusulaTask | null }>({
@@ -238,25 +237,16 @@ export const PusulaPage: React.FC = () => {
     return groups;
   }, [sortedTasks, sortKey]);
 
-  const handleQuickAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const title = quickTitle.trim();
-    if (!title || quickAdding) return;
-    setQuickAdding(true);
-    try {
-      const res = await pusulaApi.createTask({
-        title,
-        date: showingUndated ? null : selectedDate,
-      });
-      setQuickTitle("");
-      setTaskModal({ open: true, task: res.data });
-      await load();
-    } catch {
-      setError("Görev eklenemedi.");
-    } finally {
-      setQuickAdding(false);
-    }
-  };
+  const dayDurations = useMemo(() => {
+    if (!day) return { planned: 0, actual: 0 };
+    return day.tasks.reduce(
+      (acc, t) => ({
+        planned: acc.planned + (t.estimatedMinutes ?? 0),
+        actual: acc.actual + (t.actualMinutes ?? 0),
+      }),
+      { planned: 0, actual: 0 }
+    );
+  }, [day]);
 
   const handleTaskChanged = useCallback(
     (updated: PusulaTask) => {
@@ -432,6 +422,20 @@ export const PusulaPage: React.FC = () => {
                   style={{ width: `${Math.min(100, day.completionPercent)}%` }}
                 />
               </div>
+              <div className="flex items-center justify-between text-xs text-slate-500 mt-2">
+                <span>
+                  Planlanan:{" "}
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
+                    {formatMinutes(dayDurations.planned)}
+                  </span>
+                </span>
+                <span>
+                  Gerçekleşen:{" "}
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">
+                    {formatMinutes(dayDurations.actual)}
+                  </span>
+                </span>
+              </div>
             </div>
           )}
         </div>
@@ -445,26 +449,6 @@ export const PusulaPage: React.FC = () => {
           </p>
         </div>
       )}
-
-      {/* Quick add */}
-      <form onSubmit={handleQuickAdd} className="flex gap-2">
-        <input
-          value={quickTitle}
-          onChange={(e) => setQuickTitle(e.target.value)}
-          placeholder={
-            showingUndated ? "Tarihsiz görev ekle..." : "Hızlı görev ekle..."
-          }
-          className="flex-1 p-3.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black/20 text-base"
-        />
-        <button
-          type="submit"
-          disabled={quickAdding || !quickTitle.trim()}
-          className="px-5 rounded-2xl bg-primary text-white font-semibold disabled:opacity-40"
-          aria-label="Görev ekle"
-        >
-          <Plus size={20} />
-        </button>
-      </form>
 
       {/* View + sort */}
       <div className="flex flex-wrap items-center justify-between gap-2">
