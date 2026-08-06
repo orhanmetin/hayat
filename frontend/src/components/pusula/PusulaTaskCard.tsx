@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  Copy,
   GripVertical,
   Pencil,
   Plus,
@@ -35,6 +36,7 @@ interface PusulaTaskCardProps {
   onChanged: (task: PusulaTask) => void;
   onDeleted: (taskId: number) => void;
   onEdit: (task: PusulaTask) => void;
+  onCopy: (task: PusulaTask) => void;
   draggable?: boolean;
   isDragging?: boolean;
   isDropTarget?: boolean;
@@ -50,6 +52,7 @@ export const PusulaTaskCard: React.FC<PusulaTaskCardProps> = ({
   onChanged,
   onDeleted,
   onEdit,
+  onCopy,
   draggable = false,
   isDragging = false,
   isDropTarget = false,
@@ -350,6 +353,14 @@ export const PusulaTaskCard: React.FC<PusulaTaskCardProps> = ({
               >
                 <Pencil size={13} />
                 Düzenle
+              </button>
+              <button
+                type="button"
+                onClick={() => onCopy(task)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 font-medium"
+              >
+                <Copy size={13} />
+                Kopyala
               </button>
               <button
                 type="button"

@@ -113,9 +113,14 @@ export const PusulaPage: React.FC = () => {
   const [scope, setScope] = useState<ScopeKey>("dated");
   const [dragTaskId, setDragTaskId] = useState<number | null>(null);
   const [dropTargetId, setDropTargetId] = useState<number | null>(null);
-  const [taskModal, setTaskModal] = useState<{ open: boolean; task: PusulaTask | null }>({
+  const [taskModal, setTaskModal] = useState<{
+    open: boolean;
+    task: PusulaTask | null;
+    copyFrom: PusulaTask | null;
+  }>({
     open: false,
     task: null,
+    copyFrom: null,
   });
   const [reviewOpen, setReviewOpen] = useState(false);
 
@@ -343,7 +348,7 @@ export const PusulaPage: React.FC = () => {
           </Link>
           <button
             type="button"
-            onClick={() => setTaskModal({ open: true, task: null })}
+            onClick={() => setTaskModal({ open: true, task: null, copyFrom: null })}
             className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-primary text-white text-sm font-semibold hover-scale"
           >
             <Plus size={16} />
@@ -507,7 +512,8 @@ export const PusulaPage: React.FC = () => {
                     date={cardDate}
                     onChanged={handleTaskChanged}
                     onDeleted={handleTaskDeleted}
-                    onEdit={(task) => setTaskModal({ open: true, task })}
+                    onEdit={(task) => setTaskModal({ open: true, task, copyFrom: null })}
+                    onCopy={(task) => setTaskModal({ open: true, task: null, copyFrom: task })}
                   />
                 ))}
               </div>
@@ -522,7 +528,8 @@ export const PusulaPage: React.FC = () => {
                 date={cardDate}
                 onChanged={handleTaskChanged}
                 onDeleted={handleTaskDeleted}
-                onEdit={(task) => setTaskModal({ open: true, task })}
+                onEdit={(task) => setTaskModal({ open: true, task, copyFrom: null })}
+                onCopy={(task) => setTaskModal({ open: true, task: null, copyFrom: task })}
                 draggable={canDragReorder}
                 isDragging={dragTaskId === t.id}
                 isDropTarget={dropTargetId === t.id && dragTaskId !== t.id}
@@ -551,18 +558,19 @@ export const PusulaPage: React.FC = () => {
           }
           mode={view === "day" ? "day" : "week"}
           onReschedule={handleReschedule}
-          onEdit={(task) => setTaskModal({ open: true, task })}
+          onEdit={(task) => setTaskModal({ open: true, task, copyFrom: null })}
         />
       )}
 
       {taskModal.open && (
         <PusulaTaskModal
           task={taskModal.task}
+          copyFrom={taskModal.copyFrom}
           categories={categories}
           defaultDate={showingUndated ? null : selectedDate}
-          onClose={() => setTaskModal({ open: false, task: null })}
+          onClose={() => setTaskModal({ open: false, task: null, copyFrom: null })}
           onSaved={() => {
-            setTaskModal({ open: false, task: null });
+            setTaskModal({ open: false, task: null, copyFrom: null });
             void load();
           }}
         />

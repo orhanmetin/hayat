@@ -52,6 +52,8 @@ function addDaysIso(base: string, days: number): string {
 
 interface PusulaTaskModalProps {
   task?: PusulaTask | null;
+  /** Prefill a create form from an existing task (date forced to today). */
+  copyFrom?: PusulaTask | null;
   categories: PusulaCategory[];
   defaultDate: string | null;
   onClose: () => void;
@@ -60,26 +62,33 @@ interface PusulaTaskModalProps {
 
 export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
   task,
+  copyFrom = null,
   categories,
   defaultDate,
   onClose,
   onSaved,
 }) => {
   const isEdit = !!task;
-  const [title, setTitle] = useState(task?.title ?? "");
-  const [note, setNote] = useState(task?.note ?? "");
-  const [categoryId, setCategoryId] = useState<number | null>(task?.categoryId ?? null);
-  const [date, setDate] = useState<string | null>(task ? task.date : defaultDate);
-  const [timeOfDay, setTimeOfDay] = useState(task?.timeOfDay ?? "");
+  const isCopy = !task && !!copyFrom;
+  const source = task ?? copyFrom;
+  const [title, setTitle] = useState(source?.title ?? "");
+  const [note, setNote] = useState(source?.note ?? "");
+  const [categoryId, setCategoryId] = useState<number | null>(source?.categoryId ?? null);
+  const [date, setDate] = useState<string | null>(
+    isCopy ? todayIso() : task ? task.date : defaultDate
+  );
+  const [timeOfDay, setTimeOfDay] = useState(source?.timeOfDay ?? "");
   const [estimatedMinutes, setEstimatedMinutes] = useState<string>(
-    task?.estimatedMinutes ? String(task.estimatedMinutes) : ""
+    source?.estimatedMinutes ? String(source.estimatedMinutes) : ""
   );
   const [actualMinutes, setActualMinutes] = useState<string>(
-    task?.actualMinutes ? String(task.actualMinutes) : ""
+    source?.actualMinutes ? String(source.actualMinutes) : ""
   );
-  const [priority, setPriority] = useState(task?.priority ?? 3);
-  const [workType, setWorkType] = useState<PusulaWorkType>(task?.workType ?? "none");
-  const [newSteps, setNewSteps] = useState<string[]>([]);
+  const [priority, setPriority] = useState(source?.priority ?? 3);
+  const [workType, setWorkType] = useState<PusulaWorkType>(source?.workType ?? "none");
+  const [newSteps, setNewSteps] = useState<string[]>(
+    isCopy ? (copyFrom?.steps.map((s) => s.title) ?? []) : []
+  );
   const [stepDraft, setStepDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -163,7 +172,9 @@ export const PusulaTaskModal: React.FC<PusulaTaskModalProps> = ({
         className="relative z-10 w-full max-w-2xl max-h-[min(92dvh,92vh)] flex flex-col rounded-t-3xl sm:rounded-2xl bg-white dark:bg-bg-dark border border-slate-200 dark:border-white/10 shadow-xl overscroll-contain"
       >
         <div className="sticky top-0 z-10 shrink-0 bg-white dark:bg-bg-dark flex items-center justify-between p-4 border-b border-slate-200 dark:border-white/10">
-          <h2 className="font-semibold text-base">{isEdit ? "Görevi Düzenle" : "Yeni Görev"}</h2>
+          <h2 className="font-semibold text-base">
+            {isEdit ? "Görevi Düzenle" : isCopy ? "Görevi Kopyala" : "Yeni Görev"}
+          </h2>
           <button
             type="button"
             onClick={onClose}
