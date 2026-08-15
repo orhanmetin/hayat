@@ -24,6 +24,10 @@ import type {
   StravaSyncResult,
   WeekInfo,
   WeeklyGoal,
+  HatiraFilterOptions,
+  HatiraListParams,
+  HatiraMemory,
+  HatiraWritePayload,
 } from "../types/modules";
 
 export const dashboardApi = {
@@ -202,4 +206,39 @@ export const digitalApi = {
   getTokenStatus: () => apiClient.get<ShortcutsTokenStatus>("/digital/shortcuts-token"),
   createToken: () => apiClient.post<ShortcutsTokenCreated>("/digital/shortcuts-token"),
   revokeToken: () => apiClient.delete("/digital/shortcuts-token"),
+};
+
+function appendHatiraForm(data: HatiraWritePayload, forUpdate: boolean): FormData {
+  const form = new FormData();
+  form.append("Text", data.text);
+  if (data.occurredAt) form.append("OccurredAt", data.occurredAt);
+  if (data.experienceType) form.append("ExperienceType", data.experienceType);
+  if (data.locationName != null) form.append("LocationName", data.locationName);
+  if (data.googleMapsUrl != null) form.append("GoogleMapsUrl", data.googleMapsUrl);
+  if (data.companions != null) form.append("Companions", data.companions);
+  if (data.rating != null) form.append("Rating", String(data.rating));
+  if (forUpdate) {
+    form.append("KeepPhotoIds", (data.keepPhotoIds ?? []).join(","));
+  }
+  for (const file of data.photos ?? []) {
+    form.append("Photos", file);
+  }
+  return form;
+}
+
+export const hatiraApi = {
+  list: (params?: HatiraListParams) =>
+    apiClient.get<HatiraMemory[]>("/hatira", { params }),
+  filterOptions: () => apiClient.get<HatiraFilterOptions>("/hatira/filter-options"),
+  get: (id: number) => apiClient.get<HatiraMemory>(`/hatira/${id}`),
+  create: (data: HatiraWritePayload) =>
+    apiClient.post<HatiraMemory>("/hatira", appendHatiraForm(data, false), {
+      timeout: 60_000,
+    }),
+  update: (id: number, data: HatiraWritePayload) =>
+    apiClient.put<HatiraMemory>(`/hatira/${id}`, appendHatiraForm(data, true), {
+      timeout: 60_000,
+    }),
+  delete: (id: number) => apiClient.delete(`/hatira/${id}`),
+  photoUrl: (photoId: number) => `/hatira/photos/${photoId}`,
 };

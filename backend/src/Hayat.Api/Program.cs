@@ -26,6 +26,12 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
     });
 
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 32 * 1024 * 1024;
+    options.ValueLengthLimit = 32 * 1024 * 1024;
+});
+
 var corsOrigins = builder.Configuration["Cors:AllowedOrigins"]?
     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
     ?? ["http://localhost:5173"];
@@ -106,6 +112,7 @@ builder.Services.AddScoped<IActiveTimerService, ActiveTimerService>();
 builder.Services.AddScoped<IRacePrepService, RacePrepService>();
 builder.Services.AddScoped<IPusulaService, PusulaService>();
 builder.Services.AddScoped<IDigitalService, DigitalService>();
+builder.Services.AddScoped<IHatiraService, HatiraService>();
 
 var app = builder.Build();
 

@@ -415,6 +415,42 @@ namespace Hayat.Infrastructure.Data
                     """);
                 logger?.LogInformation("Added TargetAvgScreenMinutesPerDay to WeeklyGoals.");
             }
+
+            if (!TableExists(context, "HatiraMemories"))
+            {
+                context.Database.ExecuteSqlRaw("""
+                    CREATE TABLE IF NOT EXISTS "HatiraMemories" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_HatiraMemories" PRIMARY KEY AUTOINCREMENT,
+                        "UserId" INTEGER NOT NULL,
+                        "Text" TEXT NOT NULL,
+                        "OccurredAt" TEXT NOT NULL,
+                        "ExperienceType" TEXT NOT NULL DEFAULT 'Günce',
+                        "LocationName" TEXT NULL,
+                        "GoogleMapsUrl" TEXT NULL,
+                        "Companions" TEXT NULL,
+                        "Rating" INTEGER NULL,
+                        "CreatedAt" TEXT NOT NULL,
+                        "UpdatedAt" TEXT NOT NULL,
+                        CONSTRAINT "FK_HatiraMemories_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+                    );
+                    CREATE INDEX IF NOT EXISTS "IX_HatiraMemories_UserId_OccurredAt"
+                        ON "HatiraMemories" ("UserId", "OccurredAt");
+
+                    CREATE TABLE IF NOT EXISTS "HatiraPhotos" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_HatiraPhotos" PRIMARY KEY AUTOINCREMENT,
+                        "MemoryId" INTEGER NOT NULL,
+                        "ContentType" TEXT NOT NULL,
+                        "FileName" TEXT NOT NULL,
+                        "Content" BLOB NOT NULL,
+                        "SortOrder" INTEGER NOT NULL DEFAULT 0,
+                        "CreatedAt" TEXT NOT NULL,
+                        CONSTRAINT "FK_HatiraPhotos_HatiraMemories_MemoryId"
+                            FOREIGN KEY ("MemoryId") REFERENCES "HatiraMemories" ("Id") ON DELETE CASCADE
+                    );
+                    CREATE INDEX IF NOT EXISTS "IX_HatiraPhotos_MemoryId" ON "HatiraPhotos" ("MemoryId");
+                    """);
+                logger?.LogInformation("Created HatiraMemories and HatiraPhotos tables.");
+            }
         }
 
         private static void EnsureMeditationTypesSchema(AppDbContext context, ILogger? logger)

@@ -413,3 +413,52 @@ export interface ShortcutsTokenCreated {
   token: string;
   tokenPreview: string;
 }
+
+// --- Hatıra (micro-journaling) ---
+
+export type HatiraExperienceType = "Günce" | "Yemek" | "Konaklama";
+
+export interface HatiraPhoto {
+  id: number;
+  contentType: string;
+  fileName: string;
+  sortOrder: number;
+}
+
+export interface HatiraMemory {
+  id: number;
+  text: string;
+  occurredAt: string;
+  experienceType: HatiraExperienceType | string;
+  locationName: string | null;
+  googleMapsUrl: string | null;
+  companions: string | null;
+  rating: number | null;
+  photos: HatiraPhoto[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HatiraFilterOptions {
+  companions: string[];
+  locations: string[];
+}
+
+export interface HatiraListParams {
+  from?: string;
+  to?: string;
+  companion?: string;
+  location?: string;
+}
+
+export interface HatiraWritePayload {
+  text: string;
+  occurredAt?: string | null;
+  experienceType?: HatiraExperienceType | string;
+  locationName?: string | null;
+  googleMapsUrl?: string | null;
+  companions?: string | null;
+  rating?: number | null;
+  photos?: File[];
+  keepPhotoIds?: number[];
+}
