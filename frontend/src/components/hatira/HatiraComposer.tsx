@@ -162,8 +162,18 @@ export const HatiraComposer: React.FC<HatiraComposerProps> = ({
       }
       resetForm();
       onSaved();
-    } catch {
-      setError("Kayıt başarısız. Alanları ve fotoğrafları kontrol et.");
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number; data?: { message?: string } } })
+        ?.response?.status;
+      const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data
+        ?.message;
+      if (status === 413) {
+        setError("Fotoğraf çok büyük. En fazla ~4 MB / fotoğraf (toplam istek ~32 MB).");
+      } else if (apiMessage) {
+        setError(apiMessage);
+      } else {
+        setError("Kayıt başarısız. Alanları ve fotoğrafları kontrol et.");
+      }
     } finally {
       setSaving(false);
     }
