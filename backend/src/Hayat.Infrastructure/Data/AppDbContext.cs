@@ -37,6 +37,8 @@ namespace Hayat.Infrastructure.Data
         public DbSet<PusulaDayReview> PusulaDayReviews => Set<PusulaDayReview>();
         public DbSet<DailyStepLog> DailyStepLogs => Set<DailyStepLog>();
         public DbSet<ScreenTimeLog> ScreenTimeLogs => Set<ScreenTimeLog>();
+        public DbSet<HatiraMemory> HatiraMemories => Set<HatiraMemory>();
+        public DbSet<HatiraPhoto> HatiraPhotos => Set<HatiraPhoto>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -227,6 +229,27 @@ namespace Hayat.Infrastructure.Data
                 e.Property(x => x.AppName).HasMaxLength(120).IsRequired();
                 e.Property(x => x.Kind).HasMaxLength(20).IsRequired();
                 e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<HatiraMemory>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Text).HasMaxLength(8000).IsRequired();
+                e.Property(x => x.ExperienceType).HasMaxLength(40).IsRequired();
+                e.Property(x => x.LocationName).HasMaxLength(200);
+                e.Property(x => x.GoogleMapsUrl).HasMaxLength(1000);
+                e.Property(x => x.Companions).HasMaxLength(500);
+                e.HasIndex(x => new { x.UserId, x.OccurredAt });
+                e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<HatiraPhoto>(e =>
+            {
+                e.HasKey(x => x.Id);
+                e.Property(x => x.ContentType).HasMaxLength(80).IsRequired();
+                e.Property(x => x.FileName).HasMaxLength(200).IsRequired();
+                e.Property(x => x.Content).IsRequired();
+                e.HasOne(x => x.Memory).WithMany(m => m.Photos).HasForeignKey(x => x.MemoryId).OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

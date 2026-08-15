@@ -10,6 +10,7 @@ import { HabitsPage } from "./pages/HabitsPage";
 import { RacePrepPage } from "./pages/RacePrepPage";
 import { PusulaPage } from "./pages/PusulaPage";
 import { PusulaReportsPage } from "./pages/PusulaReportsPage";
+import { HatiraPage } from "./pages/HatiraPage";
 import { PusulaCategoriesPanel } from "./components/management/PusulaCategoriesPanel";
 import { ManagementLayout } from "./pages/management/ManagementLayout";
 import { WeeklyGoalsPanel } from "./components/management/WeeklyGoalsPanel";
@@ -32,6 +33,7 @@ const App: React.FC = () => {
               <Route path="/habits" element={<HabitsPage />} />
               <Route path="/race" element={<RacePrepPage />} />
               <Route path="/digital" element={<Navigate to="/" replace />} />
+              <Route path="/hatira" element={<HatiraPage />} />
               <Route path="/pusula" element={<PusulaPage />} />
               <Route path="/pusula/reports" element={<PusulaReportsPage />} />
               <Route path="/management" element={<ManagementLayout />}>

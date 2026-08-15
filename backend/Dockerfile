@@ -19,7 +19,7 @@ COPY backend/docker-entrypoint.sh /entrypoint.sh
 ARG APP_VERSION=unknown
 RUN chmod +x /entrypoint.sh \
     && echo "$APP_VERSION" > /app/APP_VERSION.txt \
-    && echo "v5-pusula-day-review-snapshot-20260801" > /app/BOOTSTRAP_VERSION.txt
+    && echo "v6-hatira-micro-journal-20260815" > /app/BOOTSTRAP_VERSION.txt
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 VOLUME ["/data"]

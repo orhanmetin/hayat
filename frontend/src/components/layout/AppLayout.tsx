@@ -10,6 +10,7 @@ import {
   LogOut,
   Sun,
   Moon,
+  Sparkles,
 } from "lucide-react";
 import { AppLogo } from "../ui/AppLogo";
 import { useAuth } from "../../contexts/AuthContext";
@@ -18,6 +19,7 @@ import { cn } from "../../lib/utils";
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/log", label: "Olaylar", icon: PlusCircle },
+  { to: "/hatira", label: "Hatıra", icon: Sparkles },
   { to: "/habits", label: "Alışkanlıklar", icon: CheckSquare },
   { to: "/pusula", label: "Pusula", icon: ClipboardList },
   { to: "/race", label: "Barcelona 24h", icon: Trophy },
@@ -37,7 +39,7 @@ export const AppLayout: React.FC = () => {
 
   const mobileLinkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
-      "flex flex-col items-center gap-1 text-[10px] font-medium",
+      "flex flex-col items-center gap-1 text-[10px] font-medium min-w-[3.25rem] px-1 shrink-0",
       isActive ? "text-primary dark:text-primary-light" : "text-slate-400 dark:text-slate-500"
     );
 
@@ -110,11 +112,11 @@ export const AppLayout: React.FC = () => {
         </div>
       </main>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-bg-dark/95 border-t border-slate-200 dark:border-white/5 flex items-center justify-around z-50 backdrop-blur-md">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-bg-dark/95 border-t border-slate-200 dark:border-white/5 flex items-center justify-around z-50 backdrop-blur-md overflow-x-auto px-1">
         {navItems.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end} className={mobileLinkClass}>
-            <item.icon size={20} />
-            <span>{item.label.split(" ")[0]}</span>
+            <item.icon size={18} />
+            <span className="whitespace-nowrap">{item.label.split(" ")[0]}</span>
           </NavLink>
         ))}
       </nav>
