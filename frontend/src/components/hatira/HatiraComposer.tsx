@@ -17,6 +17,7 @@ import { TurkishDateTimeInput } from "../ui/TurkishDateTimeInput";
 import { AuthImage } from "./AuthImage";
 import { hatiraApi } from "../../services/modules";
 import { parseApiDateTime } from "../../lib/format";
+import { resizeImagesForUpload } from "../../lib/hatiraImage";
 import { cn } from "../../lib/utils";
 
 const EXPERIENCE_TYPES: HatiraExperienceType[] = ["Günce", "Yemek", "Konaklama"];
@@ -47,6 +48,7 @@ export const HatiraComposer: React.FC<HatiraComposerProps> = ({
   const [useCustomDate, setUseCustomDate] = useState(false);
   const [occurredAt, setOccurredAt] = useState(() => new Date());
   const [saving, setSaving] = useState(false);
+  const [compressing, setCompressing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -125,11 +127,26 @@ export const HatiraComposer: React.FC<HatiraComposerProps> = ({
     return editing.photos.filter((p) => keepPhotoIds.includes(p.id));
   }, [editing, keepPhotoIds]);
 
-  const handleFiles = (list: FileList | null) => {
-    if (!list) return;
-    const next = [...photos, ...Array.from(list)].slice(0, 12 - existingPhotos.length);
-    setPhotos(next);
-    setOpen((o) => ({ ...o, photos: true }));
+  const handleFiles = async (list: FileList | null) => {
+    if (!list || list.length === 0) return;
+    const room = 12 - existingPhotos.length - photos.length;
+    if (room <= 0) {
+      setError("Bir anıya en fazla 12 fotoğraf eklenebilir.");
+      return;
+    }
+
+    const selected = Array.from(list).slice(0, room);
+    setCompressing(true);
+    setError(null);
+    try {
+      const resized = await resizeImagesForUpload(selected);
+      setPhotos((prev) => [...prev, ...resized].slice(0, 12 - existingPhotos.length));
+      setOpen((o) => ({ ...o, photos: true }));
+    } catch {
+      setError("Fotoğraf küçültülemedi. Başka bir görsel dene (JPEG/PNG).");
+    } finally {
+      setCompressing(false);
+    }
   };
 
   const buildPayload = (): HatiraWritePayload => ({
@@ -246,11 +263,11 @@ export const HatiraComposer: React.FC<HatiraComposerProps> = ({
         {iconBtn("companions", "Kiminle", Users, !!companions)}
         {iconBtn("rating", "Puan", Star, rating != null)}
         {iconBtn("date", "Tarih", CalendarClock, useCustomDate)}
-        <button
-          type="submit"
-          disabled={saving}
-          className="ml-auto px-4 py-2.5 rounded-xl bg-primary text-white font-semibold flex items-center gap-2 disabled:opacity-60"
-        >
+          <button
+            type="submit"
+            disabled={saving || compressing}
+            className="ml-auto px-4 py-2.5 rounded-xl bg-primary text-white font-semibold flex items-center gap-2 disabled:opacity-60"
+          >
           {editing ? <Pencil size={16} /> : <Save size={16} />}
           {saving ? "Kaydediliyor…" : editing ? "Güncelle" : "Kaydet"}
         </button>
@@ -272,10 +289,14 @@ export const HatiraComposer: React.FC<HatiraComposerProps> = ({
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="text-sm px-3 py-2 rounded-xl border border-dashed border-slate-300 dark:border-white/20 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5"
+            disabled={compressing || saving}
+            className="text-sm px-3 py-2 rounded-xl border border-dashed border-slate-300 dark:border-white/20 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 disabled:opacity-60"
           >
-            Fotoğraf ekle (çoklu)
+            {compressing ? "Küçültülüyor…" : "Fotoğraf ekle (çoklu)"}
           </button>
+          <p className="text-xs text-slate-400">
+            Yüklemeden önce uzun kenar ~1600px ve JPEG olarak sıkıştırılır.
+          </p>
           {(existingPhotos.length > 0 || photoPreviews.length > 0) && (
             <div className="flex flex-wrap gap-2">
               {existingPhotos.map((p) => (
