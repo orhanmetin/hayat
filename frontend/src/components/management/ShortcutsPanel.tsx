@@ -76,6 +76,7 @@ export const ShortcutsPanel: React.FC = () => {
 
   const stepsUrl = `${PUBLIC_URL}/api/shortcuts/steps`;
   const screenUrl = `${PUBLIC_URL}/api/shortcuts/screen-time`;
+  const hatiraUrl = `${PUBLIC_URL}/api/shortcuts/hatira`;
   const pingUrl = `${PUBLIC_URL}/api/shortcuts/ping`;
 
   return (
@@ -86,8 +87,8 @@ export const ShortcutsPanel: React.FC = () => {
           iOS Shortcuts
         </h2>
         <p className="text-xs text-slate-400 mt-1">
-          Apple Health adımları ve Screen Time (Get App & Website Usage) verisini Hayat’a
-          göndermek için token ve uç noktalar.
+          Apple Health adımları, Screen Time ve Ana Ekran widget’ı ile hızlı Hatıra kaydı için
+          token ve uç noktalar.
         </p>
       </div>
 
@@ -169,6 +170,13 @@ export const ShortcutsPanel: React.FC = () => {
             copied={copied === "screen"}
             onCopy={() => void copyText("screen", screenUrl)}
           />
+          <EndpointRow
+            label="Hatıra (hızlı anı / widget)"
+            method="POST"
+            url={hatiraUrl}
+            copied={copied === "hatira"}
+            onCopy={() => void copyText("hatira", hatiraUrl)}
+          />
 
           <div className="text-xs text-slate-500 space-y-2 leading-relaxed">
             <p className="font-semibold text-slate-600 dark:text-slate-300">Kurulum özeti</p>
@@ -201,7 +209,13 @@ export const ShortcutsPanel: React.FC = () => {
                 → <code className="text-[10px]">POST /api/shortcuts/screen-time</code>. Website
                 yok; süre metnini API dakikaya çevirir.
               </li>
-              <li>Automation: her gün bir kez veya elle çalıştırın.</li>
+              <li>
+                <strong>Hatıra widget:</strong> Kısayol → <em>Metin Sor</em> → JSON{" "}
+                <code className="text-[10px]">{"{ \"text\": \"…\" }"}</code> →{" "}
+                <code className="text-[10px]">POST /api/shortcuts/hatira</code>. Ana Ekran’da{" "}
+                <em>+</em> → Kısayollar widget → bu kısayolu bağla.
+              </li>
+              <li>Automation: adım/ekran için her gün bir kez; Hatıra elle dokunuş.</li>
             </ol>
             <p>
               Detaylı JSON örnekleri: sunucudaki{" "}
