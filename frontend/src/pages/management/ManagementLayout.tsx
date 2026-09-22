@@ -16,7 +16,8 @@ export const ManagementLayout: React.FC = () => (
     <div>
       <h1 className="text-2xl font-bold">Yönetim</h1>
       <p className="text-sm text-slate-500 mt-1">
-        Hedefler, aktivite türleri, anektodlar ve Shortcuts entegrasyonu
+        Hedefler, aktivite türleri, anektodlar ve Shortcuts entegrasyonu (adım, ekran
+        süresi, Hatıra widget)
       </p>
     </div>
 

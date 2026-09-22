@@ -97,6 +97,172 @@ namespace Hayat.Api.Shortcuts
             return days.Count == 0 ? null : new UpsertScreenTimeRequest(days);
         }
 
+        /// <summary>
+        /// Quick Hatıra (memory) body for iPhone Shortcuts / Home Screen widget:
+        /// <code>{ "text": "Kahvede güzel sohbet" }</code>,
+        /// plain string <c>"Kahvede güzel sohbet"</c>,
+        /// or Turkish aliases: <c>metin</c>, <c>anı</c>, <c>hatira</c>.
+        /// Optional: experienceType/type, location/locationName, companions,
+        /// rating, googleMapsUrl/mapsUrl, occurredAt/date.
+        /// </summary>
+        public static CreateHatiraRequest? ParseHatira(JsonElement body)
+        {
+            if (body.ValueKind == JsonValueKind.String)
+            {
+                var plain = body.GetString()?.Trim();
+                if (string.IsNullOrEmpty(plain)) return null;
+                return new CreateHatiraRequest(plain, null, null, null, null, null, null);
+            }
+
+            if (body.ValueKind != JsonValueKind.Object)
+                return null;
+
+            if (!TryGetPropertyAny(body, TextKeys, out var textEl))
+                return null;
+
+            string? text = textEl.ValueKind switch
+            {
+                JsonValueKind.String => textEl.GetString(),
+                JsonValueKind.Number => textEl.ToString(),
+                _ => null
+            };
+            if (string.IsNullOrWhiteSpace(text))
+                return null;
+
+            string? experienceType = null;
+            if (TryGetPropertyAny(body, ExperienceTypeKeys, out var typeEl) &&
+                typeEl.ValueKind == JsonValueKind.String)
+                experienceType = typeEl.GetString();
+
+            string? locationName = null;
+            if (TryGetPropertyAny(body, LocationKeys, out var locEl) &&
+                locEl.ValueKind == JsonValueKind.String)
+                locationName = locEl.GetString();
+
+            string? mapsUrl = null;
+            if (TryGetPropertyAny(body, MapsUrlKeys, out var mapsEl) &&
+                mapsEl.ValueKind == JsonValueKind.String)
+                mapsUrl = mapsEl.GetString();
+
+            string? companions = null;
+            if (TryGetPropertyAny(body, CompanionsKeys, out var compEl))
+            {
+                if (compEl.ValueKind == JsonValueKind.String)
+                    companions = compEl.GetString();
+                else if (compEl.ValueKind == JsonValueKind.Array)
+                {
+                    var parts = new List<string>();
+                    foreach (var item in compEl.EnumerateArray())
+                    {
+                        if (item.ValueKind == JsonValueKind.String)
+                        {
+                            var s = item.GetString()?.Trim();
+                            if (!string.IsNullOrEmpty(s)) parts.Add(s);
+                        }
+                    }
+                    if (parts.Count > 0)
+                        companions = string.Join(", ", parts);
+                }
+            }
+
+            int? rating = null;
+            if (TryGetPropertyAny(body, RatingKeys, out var ratingEl) &&
+                TryParseInt(ratingEl, out var ratingValue))
+                rating = ratingValue;
+
+            DateTime? occurredAt = null;
+            if (TryGetPropertyAny(body, OccurredAtKeys, out var whenEl) &&
+                TryParseDateTime(whenEl, out var when))
+                occurredAt = when;
+
+            return new CreateHatiraRequest(
+                text.Trim(),
+                occurredAt,
+                experienceType,
+                locationName,
+                mapsUrl,
+                companions,
+                rating);
+        }
+
+        private static readonly string[] TextKeys =
+        [
+            "text", "metin", "anı", "ani", "hatira", "hatıra", "memory", "note", "body", "content"
+        ];
+
+        private static readonly string[] ExperienceTypeKeys =
+        [
+            "experienceType", "type", "tip", "experience", "deneyim"
+        ];
+
+        private static readonly string[] LocationKeys =
+        [
+            "locationName", "location", "yer", "mekan", "place"
+        ];
+
+        private static readonly string[] MapsUrlKeys =
+        [
+            "googleMapsUrl", "mapsUrl", "maps", "mapUrl"
+        ];
+
+        private static readonly string[] CompanionsKeys =
+        [
+            "companions", "companion", "kimlerle", "kisi", "people", "with"
+        ];
+
+        private static readonly string[] RatingKeys =
+        [
+            "rating", "puan", "stars", "star"
+        ];
+
+        private static readonly string[] OccurredAtKeys =
+        [
+            "occurredAt", "occurred_at", "datetime", "dateTime", "when",
+            "date", "tarih", "Start Date", "Başlangıç Tarihi"
+        ];
+
+        private static bool TryParseDateTime(JsonElement el, out DateTime value)
+        {
+            value = default;
+            if (el.ValueKind == JsonValueKind.String)
+            {
+                var s = el.GetString();
+                if (string.IsNullOrWhiteSpace(s)) return false;
+                s = s.Trim();
+
+                if (DateTime.TryParse(
+                        s,
+                        CultureInfo.InvariantCulture,
+                        DateTimeStyles.RoundtripKind,
+                        out value))
+                    return true;
+
+                foreach (var culture in DateCultures)
+                {
+                    if (DateTime.TryParse(s, culture, DateTimeStyles.AssumeLocal, out value))
+                        return true;
+                }
+
+                // Date-only → start of that local day as Unspecified (service normalizes).
+                if (TryParseDate(el, out var dateOnly))
+                {
+                    value = dateOnly.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+                    return true;
+                }
+
+                return false;
+            }
+
+            if (el.ValueKind == JsonValueKind.Number && el.TryGetInt64(out var unix))
+            {
+                var seconds = unix > 10_000_000_000L ? unix / 1000L : unix;
+                value = DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime;
+                return true;
+            }
+
+            return false;
+        }
+
         private static bool TryParseStepItem(JsonElement el, out UpsertDailyStepItem item)
         {
             item = null!;

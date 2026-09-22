@@ -26,6 +26,9 @@ namespace Hayat.Api.Controllers
         private const string ScreenExample =
             "{\"date\":\"2026-07-29\",\"apps\":[\"Chrome (33m)\",\"Shortcuts (2h 5m)\"]}";
 
+        private const string HatiraExample =
+            "{\"text\":\"Kahvede güzel sohbet\"} veya {\"metin\":\"...\",\"tip\":\"Yemek\",\"yer\":\"Cafe X\",\"puan\":4}";
+
         private const string EmptyBodyHint =
             "Sağlık Örneklerini Bul çıktısı HTTP gövdesine otomatik gitmez. " +
             "URL İçeriğini Al → İstek Gövdesi → JSON → days alanına {date,steps} listesini bağla. " +
@@ -35,9 +38,20 @@ namespace Hayat.Api.Controllers
             "İstek Gövdesi = JSON. Örnek: { \"date\": \"2026-07-29\", \"apps\": [\"Chrome (33m)\", \"Shortcuts (2h 5m)\"] }. " +
             "Website yok — sadece app satırları. Süre parantez içinde (33m / 2h 5m); API dakikaya çevirir.";
 
-        private readonly IDigitalService _service;
+        private const string HatiraEmptyHint =
+            "İstek Gövdesi = JSON. Zorunlu alan: text (veya metin/anı). " +
+            "Örnek: { \"text\": \"Kahvede güzel sohbet\" }. " +
+            "İsteğe bağlı: tip (Günce/Yemek/Konaklama), yer, puan (1-5), kimlerle, mapsUrl, tarih. " +
+            "Ask for Input çıktısını text alanına bağla.";
 
-        public ShortcutsController(IDigitalService service) => _service = service;
+        private readonly IDigitalService _service;
+        private readonly IHatiraService _hatira;
+
+        public ShortcutsController(IDigitalService service, IHatiraService hatira)
+        {
+            _service = service;
+            _hatira = hatira;
+        }
 
         [HttpPost("steps")]
         public async Task<IActionResult> UpsertSteps()
@@ -123,6 +137,74 @@ namespace Hayat.Api.Controllers
             }
 
             return Ok(await _service.UpsertScreenTimeAsync(userId.Value, request));
+        }
+
+        /// <summary>
+        /// Quick Hatıra create for iPhone Shortcuts Home Screen widget.
+        /// Text-first JSON; photos are not supported on this path (use the web app).
+        /// </summary>
+        [HttpPost("hatira")]
+        public async Task<IActionResult> CreateHatira()
+        {
+            var userId = await ResolveUserIdAsync();
+            if (userId == null) return Unauthorized(new { message = "Geçersiz Shortcuts token." });
+
+            var (body, raw, parseError) = await ReadJsonBodyAsync();
+            if (parseError != null)
+            {
+                return BadRequest(new
+                {
+                    message = parseError,
+                    hint = HatiraEmptyHint,
+                    example = HatiraExample,
+                    receivedPreview = Truncate(raw)
+                });
+            }
+
+            if (body == null)
+            {
+                return BadRequest(new
+                {
+                    message = "JSON gövde boş.",
+                    hint = HatiraEmptyHint,
+                    example = HatiraExample
+                });
+            }
+
+            var request = ShortcutsBodyParser.ParseHatira(body.Value);
+            if (request == null)
+            {
+                return BadRequest(new
+                {
+                    message = "text (veya metin/anı) gerekli.",
+                    hint = HatiraEmptyHint,
+                    example = HatiraExample,
+                    receivedPreview = Truncate(raw)
+                });
+            }
+
+            var result = await _hatira.CreateAsync(userId.Value, request, null);
+            if (result == null)
+            {
+                return BadRequest(new
+                {
+                    message = "Anı kaydedilemedi. Metin zorunlu; tip Günce/Yemek/Konaklama, puan 1–5 olmalı.",
+                    hint = HatiraEmptyHint,
+                    example = HatiraExample,
+                    receivedPreview = Truncate(raw)
+                });
+            }
+
+            return Ok(new
+            {
+                ok = true,
+                id = result.Id,
+                text = result.Text,
+                occurredAt = result.OccurredAt,
+                experienceType = result.ExperienceType,
+                locationName = result.LocationName,
+                rating = result.Rating
+            });
         }
 
         [HttpGet("ping")]

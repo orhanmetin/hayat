@@ -128,13 +128,63 @@ API uygulama adını ve süreyi ayırır; süreyi dakikaya çevirir (`2h 5m` →
 > 30 günden eski tarihler yok sayılır.
 
 
-## 4. Otomasyon
+## 4. Hatıra (hızlı anı) — POST + Ana Ekran widget
+
+**URL:** `http://167.233.16.12/api/shortcuts/hatira`
+
+iPhone’da native widget yerine **Kısayollar widget’ı** kullanılır: kısayolu bir kez kur, Ana Ekran’a ekle, tek dokunuşla metin sorup Hayat’a kaydet.
+
+### Body (metin zorunlu)
+
+```json
+{ "text": "Kahvede güzel sohbet" }
+```
+
+Türkçe alan adları da olur: `metin`, `anı`, `hatira`. İsteğe bağlı:
+
+| Alan | Örnek | Not |
+|------|--------|-----|
+| `tip` / `experienceType` | `Günce`, `Yemek`, `Konaklama` | Yoksa **Günce** |
+| `yer` / `location` | `Cafe X` | |
+| `puan` / `rating` | `1`–`5` | |
+| `kimlerle` / `companions` | `Ayşe, Mehmet` | |
+| `mapsUrl` | `https://maps.google.com/...` | |
+| `tarih` / `occurredAt` | `2026-09-22T18:30:00` | Yoksa **şimdi** |
+
+Fotoğraf bu uç noktada yok — fotoğraflı kayıt için Hayat web → Hatıra.
+
+### Shortcuts iskeleti (widget için)
+
+1. **Metin Sor** (Ask for Input) → İstem: `Ne oldu?` → Tür: Metin
+2. **Değişkeni Ayarla** → ad: `HatiraMetin` → değer: önceki cevap
+3. **URL İçeriğini Al**
+   - URL: `http://167.233.16.12/api/shortcuts/hatira`
+   - Yöntem: **POST**
+   - Başlıklar: `X-Hayat-Shortcuts-Token` + `Content-Type: application/json`
+   - **İstek Gövdesi** → **JSON**
+   - Alan: `text` = değişken **`HatiraMetin`**
+4. (İsteğe bağlı) **Bildirim Göster** → “Hatıra kaydedildi”
+
+Kısayolu kaydet: ad **Hatıra Ekle** (veya istediğin isim).
+
+### Ana Ekran widget
+
+1. Ana Ekran’da boş alana basılı tut → **+** → **Kısayollar**
+2. Küçük veya orta widget seç → **Hatıra Ekle** kısayolunu bağla
+3. Widget’a dokun → metin sorulur → Kaydet → Hatıra timeline’da görünür
+
+> Aynı token adım/ekran süresi kısayollarıyla paylaşılır (Yönetim → Shortcuts).
+
+
+## 5. Otomasyon
 
 Kısayollar → **Otomasyon** → Günün Saati (ör. 22:30) → shortcut’u çalıştır.
+(Hatıra widget’ı elle dokunuş içindir; adım/ekran süresi için otomasyon önerilir.)
 
-## 5. Hayat’ta görme
+## 6. Hayat’ta görme
 
 **Dashboard** → Adım ve Ekran kartları (tıklayınca trend).  
+**Hatıra** → timeline (Shortcuts’tan gelen anılar dahil).  
 Hedefler: **Yönetim → Haftalık Hedefler**.
 
 ## Sık karıştırılan isimler
@@ -143,4 +193,5 @@ Hedefler: **Yönetim → Haftalık Hedefler**.
 |----------|---------------------|---------------------|
 | Send JSON / Send Request | **URL İçeriğini Al** | Get Contents of URL |
 | Dictionary / Object | **Sözlük** | Dictionary |
+| Ask / Prompt | **Metin Sor** | Ask for Input |
 | HTTP POST | URL İçeriğini Al → Yöntem: POST | Get Contents of URL → Method: POST |
