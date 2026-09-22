@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>gdu.com.tr uptime → ntfy</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --fg: #e7ecf1;
+      --muted: #8b98a5;
+      --ok: #3dd68c;
+      --bad: #f07178;
+      --accent: #59c2ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(1200px 600px at 20% -10%, #1a2733, var(--bg));
+      color: var(--fg);
+      display: grid;
+      place-items: center;
+      padding: 1.5rem;
+    }
+    main { width: min(36rem, 100%); }
+    h1 { font-size: 1.35rem; font-weight: 650; margin: 0 0 0.35rem; }
+    p { margin: 0 0 1rem; color: var(--muted); line-height: 1.45; }
+    .status {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin: 1rem 0 0.5rem;
+    }
+    .status.up { color: var(--ok); }
+    .status.down { color: var(--bad); }
+    .status.idle { color: var(--muted); }
+    .log {
+      margin-top: 1.25rem;
+      padding: 0.85rem 1rem;
+      border: 1px solid #243040;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.25);
+      height: 14rem;
+      overflow: auto;
+      font: 0.85rem/1.45 ui-monospace, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+    .row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 8px;
+      padding: 0.65rem 1rem;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--accent);
+      color: #041018;
+    }
+    button.secondary { background: #243040; color: var(--fg); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>gdu.com.tr watcher</h1>
+    <p>
+      Keeps checking the site and pushes to
+      <a href="https://ntfy.sh/gduup" target="_blank" rel="noopener">ntfy / gduup</a>
+      when it becomes reachable. Keep this tab open.
+    </p>
+    <div id="status" class="status idle">Idle</div>
+    <div id="meta" style="color:var(--muted);font-size:0.9rem"></div>
+    <div class="row">
+      <button id="start">Start</button>
+      <button id="stop" class="secondary" disabled>Stop</button>
+      <button id="test" class="secondary">Send test push</button>
+    </div>
+    <div id="log" class="log"></div>
+  </main>
+  <script>
+    const URL = "https://gdu.com.tr";
+    const NTFY = "https://ntfy.sh/gduup";
+    const INTERVAL_MS = 30_000;
+
+    const statusEl = document.getElementById("status");
+    const metaEl = document.getElementById("meta");
+    const logEl = document.getElementById("log");
+    const startBtn = document.getElementById("start");
+    const stopBtn = document.getElementById("stop");
+    const testBtn = document.getElementById("test");
+
+    let timer = null;
+    let wasUp = false;
+    let checking = false;
+
+    function stamp() {
+      return new Date().toISOString().replace("T", " ").replace(/\.\d+Z$/, " UTC");
+    }
+
+    function log(msg) {
+      logEl.textContent = `[${stamp()}] ${msg}\n` + logEl.textContent;
+    }
+
+    function setStatus(kind, label, meta) {
+      statusEl.className = `status ${kind}`;
+      statusEl.textContent = label;
+      metaEl.textContent = meta || "";
+    }
+
+    async function notify(title, body) {
+      const res = await fetch(NTFY, {
+        method: "POST",
+        headers: {
+          Title: title,
+          Priority: "high",
+          Tags: "white_check_mark,globe_with_meridians",
+        },
+        body,
+      });
+      if (!res.ok) throw new Error(`ntfy HTTP ${res.status}`);
+    }
+
+    async function isReachable() {
+      // no-cors: we only care whether the network request completes.
+      // A CORS block still means the host answered → treat as up.
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 10_000);
+      try {
+        await fetch(URL, {
+          method: "GET",
+          mode: "no-cors",
+          cache: "no-store",
+          signal: ctrl.signal,
+        });
+        return true;
+      } catch {
+        return false;
+      } finally {
+        clearTimeout(t);
+      }
+    }
+
+    async function tick() {
+      if (checking) return;
+      checking = true;
+      try {
+        const up = await isReachable();
+        if (up) {
+          setStatus("up", "UP", `Last check ${stamp()}`);
+          if (!wasUp) {
+            log("UP — sending ntfy push");
+            await notify("gdu.com.tr is up", `Reachable at ${stamp()}: ${URL}`);
+            log("ntfy push sent");
+          } else {
+            log("still up");
+          }
+          wasUp = true;
+        } else {
+          setStatus("down", "DOWN", `Last check ${stamp()}`);
+          if (wasUp) log("DOWN — will notify again when back up");
+          else log("still down");
+          wasUp = false;
+        }
+      } catch (err) {
+        log(`error: ${err.message || err}`);
+      } finally {
+        checking = false;
+      }
+    }
+
+    function start() {
+      if (timer) return;
+      wasUp = false;
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+      log(`watching ${URL} every ${INTERVAL_MS / 1000}s`);
+      tick();
+      timer = setInterval(tick, INTERVAL_MS);
+    }
+
+    function stop() {
+      if (timer) clearInterval(timer);
+      timer = null;
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      setStatus("idle", "Stopped", "");
+      log("stopped");
+    }
+
+    startBtn.addEventListener("click", start);
+    stopBtn.addEventListener("click", stop);
+    testBtn.addEventListener("click", async () => {
+      try {
+        await notify("gdu watcher test", `Test push at ${stamp()}`);
+        log("test push sent");
+      } catch (err) {
+        log(`test push failed: ${err.message || err}`);
+      }
+    });
+  </script>
+</body>
+</html>
